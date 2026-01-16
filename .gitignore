@@ -1,0 +1,96 @@
+# ===== 개인 정보 / 민감한 파일 =====
+# SSH/SSL 키
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+# 환경 변수 및 설정
+.env
+.env.*
+*.env
+local.properties
+secrets.properties
+
+# AWS 자격 증명
+.aws/
+credentials
+aws-credentials*
+
+# ===== IDE 설정 =====
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# ===== 빌드 출력물 =====
+# Gradle
+.gradle/
+build/
+*/build/
+**/build/
+
+# Maven
+target/
+
+# ===== Android 관련 =====
+# Local configuration file
+local.properties
+
+# Signing config
+*.keystore
+*.jks
+release/
+
+# Generated files
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Proguard
+proguard/
+
+# ===== Kotlin/Java =====
+*.class
+*.jar
+*.war
+*.ear
+
+# ===== 로그 및 임시 파일 =====
+*.log
+*.tmp
+*.temp
+*.swp
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===== 프로젝트 특정 =====
+# Dump 폴더 (이전 빌드 아티팩트)
+Dump/
+
+# Node modules (만약 사용한다면)
+node_modules/
+
+# Docker volumes
+docker-data/
