@@ -1,17 +1,93 @@
 package com.ieum.presentation.navigation
 
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.outlined.Dashboard
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.ieum.presentation.feature.login.LoginScreen
 import com.ieum.presentation.theme.IeumColors
+/**
+ * Root Routes
+ * - 앱 실행 시 LOGIN 먼저
+ * - 로그인 성공 시 MAIN(하단탭)으로
+ */
+
+/**
+ * ✅ 앱의 "진짜 메인 네비게이션"
+ * - startDestination = LOGIN (에뮬 실행하면 로그인부터)
+ */
+@Composable
+fun MainNavigation() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = Routes.LOGIN
+    ) {
+        composable(Routes.LOGIN) {
+            // 로그인 성공하면 메인으로 이동
+            LoginScreen(
+                onLoginSuccess = {
+                    navController.navigate(Routes.MBTI_TEST) {
+                        popUpTo(Routes.LOGIN) { inclusive = true } // 뒤로가기 시 로그인으로 안 돌아가게
+                    }
+                }
+            )
+        }
+
+        composable(Routes.MBTI_TEST) {
+            // 이전에 만든 TestMainScreen 호출
+            // 테스트가 종료되었을 때 Routes.MAIN으로 이동하는 로직을 추가하면 좋습니다.
+            com.ieum.presentation.feature.test.TestMainScreen(
+                onTestFinished = {
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.MBTI_TEST) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.MAIN) {
+            MainScreen()
+        }
+    }
+}
 
 /**
  * 하단 네비게이션 탭 정의
@@ -29,28 +105,28 @@ sealed class BottomNavItem(
         selectedIcon = Icons.Filled.Person,
         unselectedIcon = Icons.Outlined.Person
     )
-    
+
     data object Calendar : BottomNavItem(
         route = "calendar",
         title = "캘린더",
         selectedIcon = Icons.Filled.DateRange,
         unselectedIcon = Icons.Outlined.DateRange
     )
-    
+
     data object MapGallery : BottomNavItem(
         route = "map_gallery",
         title = "지도갤러리",
         selectedIcon = Icons.Filled.Place,
         unselectedIcon = Icons.Outlined.Place
     )
-    
+
     data object Chat : BottomNavItem(
         route = "chat",
         title = "채팅",
         selectedIcon = Icons.Filled.Chat,
         unselectedIcon = Icons.Outlined.Chat
     )
-    
+
     data object Dashboard : BottomNavItem(
         route = "dashboard",
         title = "대시보드",
@@ -70,15 +146,17 @@ val bottomNavItems = listOf(
 /**
  * 메인 화면 - 하단 네비게이션 포함
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedItem by remember { mutableIntStateOf(4) } // 대시보드가 기본
-    
+
     Scaffold(
         modifier = modifier,
+        // ✅ Theme 배경 이미지(전체 통일) 덮지 않게 투명 처리 추천
+        containerColor = Color.Transparent,
         bottomBar = {
             IeumBottomNavigation(
                 selectedIndex = selectedItem,
@@ -96,7 +174,7 @@ fun MainScreen(
                 targetState = selectedItem,
                 transitionSpec = {
                     fadeIn(animationSpec = tween(300)) togetherWith
-                    fadeOut(animationSpec = tween(300))
+                            fadeOut(animationSpec = tween(300))
                 },
                 label = "screen_transition"
             ) { index ->

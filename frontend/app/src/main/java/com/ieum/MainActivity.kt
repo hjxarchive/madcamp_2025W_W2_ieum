@@ -6,11 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import com.ieum.presentation.feature.onboarding.OnboardingScreen
-import com.ieum.presentation.navigation.MainScreen
-import com.ieum.presentation.theme.IeumColors
+import androidx.compose.ui.graphics.Color
+import com.ieum.presentation.navigation.MainNavigation
 import com.ieum.presentation.theme.IeumTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -19,29 +17,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        
+
         setContent {
             IeumTheme {
+                // ✅ Theme에서 배경 이미지를 깔아두면, 여기 Surface는 투명 처리
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = IeumColors.Background
+                    color = Color.Transparent
                 ) {
-                    IeumApp()
+                    MainNavigation() // ✅ 앱 시작을 로그인으로
                 }
             }
         }
     }
 }
 
-@Composable
-fun IeumApp() {
-    var showOnboarding by remember { mutableStateOf(true) }
-    
-    if (showOnboarding) {
-        OnboardingScreen(
-            onStartClick = { showOnboarding = false }
-        )
-    } else {
-        MainScreen()
-    }
-}
+
