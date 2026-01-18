@@ -101,7 +101,30 @@ composable(Routes.MBTI_TEST) {
         }
 
         composable(Routes.MAIN) {
-            MainScreen()
+            MainScreen(
+                onNavigateToMyPage = { navController.navigate(Routes.MY_PAGE) },
+                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) }
+            )
+        }
+
+        composable(Routes.MY_PAGE) {
+            com.ieum.presentation.feature.profile.MyPageScreen(
+                onBackClick = { navController.popBackStack() },
+                onNavigateToConsumption = { navController.navigate(Routes.CONSUMPTION) },
+                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) }
+            )
+        }
+
+        composable(Routes.CONSUMPTION) {
+            com.ieum.presentation.feature.finance.ConsumptionScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.BUDGET_PLANNING) {
+            com.ieum.presentation.feature.finance.BudgetPlanningScreen(
+                onBackClick = { navController.popBackStack() }
+            )
         }
     }
 }
@@ -115,7 +138,6 @@ sealed class BottomNavItem(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    data object MyPage : BottomNavItem("mypage", "마이페이지", Icons.Filled.Person, Icons.Outlined.Person)
     data object Calendar : BottomNavItem("calendar", "캘린더", Icons.Filled.DateRange, Icons.Outlined.DateRange)
     data object MapGallery : BottomNavItem("map_gallery", "지도갤러리", Icons.Filled.Place, Icons.Outlined.Place)
     data object Chat : BottomNavItem("chat", "채팅", Icons.Filled.Chat, Icons.Outlined.Chat)
@@ -123,7 +145,6 @@ sealed class BottomNavItem(
 }
 
 val bottomNavItems = listOf(
-    BottomNavItem.MyPage,
     BottomNavItem.Calendar,
     BottomNavItem.MapGallery,
     BottomNavItem.Chat,
@@ -136,17 +157,19 @@ val bottomNavItems = listOf(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNavigateToMyPage: () -> Unit,
+    onNavigateToBudgetPlanning: () -> Unit
 ) {
-    // 대시보드가 기본 (index 4)
-    var selectedItem by remember { mutableIntStateOf(4) }
+    // 대시보드가 기본 (index 3 - Calendar=0, Map=1, Chat=2, Dashboard=3)
+    var selectedItem by remember { mutableIntStateOf(3) }
 
     Scaffold(
         modifier = modifier,
         containerColor = Color.Transparent,
         bottomBar = {
-            // ✅ 캘린더 화면(index 1)과 채팅 화면(index 3)이 아닐 때만 바텀 바를 표시합니다.
-            if (selectedItem != 1 && selectedItem != 3) {
+            // ✅ 캘린더 화면(index 0)과 채팅 화면(index 2)이 아닐 때만 바텀 바를 표시합니다.
+            if (selectedItem != 0 && selectedItem != 2) {
                 IeumBottomNavigation(
                     selectedIndex = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -158,7 +181,7 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 // 바텀 바가 숨겨질 때는 패딩을 주지 않아 화면을 꽉 채우게 합니다.
-                .padding(if (selectedItem != 1 && selectedItem != 3) paddingValues else PaddingValues(0.dp))
+                .padding(if (selectedItem != 0 && selectedItem != 2) paddingValues else PaddingValues(0.dp))
         ) {
             AnimatedContent(
                 targetState = selectedItem,
@@ -169,13 +192,14 @@ fun MainScreen(
                 label = "screen_transition"
             ) { index ->
                 when (bottomNavItems[index]) {
-                    BottomNavItem.MyPage -> MyPageContent()
-                    // ✅ 뒤로 가기 시 다시 대시보드(index 4)로 돌아오도록 설정
-                    BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 4 })
+                    // ✅ 뒤로 가기 시 다시 대시보드(index 3)로 돌아오도록 설정
+                    BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 3 })
                     BottomNavItem.MapGallery -> MapGalleryContent()
-                    BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 4 })
+                    BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 3 }, onNavigateToBudgetPlanning = onNavigateToBudgetPlanning)
                     BottomNavItem.Dashboard -> DashboardContent(
-                        onNavigateToCalendar = { selectedItem = 1 }
+                        onNavigateToCalendar = { selectedItem = 0 },
+                        onNavigateToMyPage = onNavigateToMyPage,
+                        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning
                     )
                 }
             }
@@ -220,11 +244,6 @@ fun IeumBottomNavigation(
 // --- 각 화면 연결 함수 (패키지 경로에 주의하세요) ---
 
 @Composable
-private fun MyPageContent() {
-    com.ieum.presentation.feature.profile.MyPageScreen()
-}
-
-@Composable
 private fun CalendarContent(onBack: () -> Unit) {
     com.ieum.presentation.feature.calendar.CalendarScreen(
         onBackClick = onBack
@@ -237,15 +256,22 @@ private fun MapGalleryContent() {
 }
 
 @Composable
-private fun ChatContent(onBack: () -> Unit) {
+private fun ChatContent(onBack: () -> Unit, onNavigateToBudgetPlanning: () -> Unit) {
     com.ieum.presentation.feature.chat.ChatScreen(
-        onBackClick = onBack
+        onBackClick = onBack,
+        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning
     )
 }
 
 @Composable
-private fun DashboardContent(onNavigateToCalendar: () -> Unit) {
+private fun DashboardContent(
+    onNavigateToCalendar: () -> Unit,
+    onNavigateToMyPage: () -> Unit,
+    onNavigateToBudgetPlanning: () -> Unit
+) {
     com.ieum.presentation.feature.dashboard.DashboardScreen(
-        onNavigateToCalendar = onNavigateToCalendar
+        onNavigateToCalendar = onNavigateToCalendar,
+        onNavigateToProfile = onNavigateToMyPage,
+        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning
     )
 }

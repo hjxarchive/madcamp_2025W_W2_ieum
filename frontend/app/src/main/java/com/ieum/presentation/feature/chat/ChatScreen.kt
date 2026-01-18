@@ -35,7 +35,8 @@ import java.time.format.DateTimeFormatter
 fun ChatScreen(
     onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: ChatViewModel = hiltViewModel()
+    viewModel: ChatViewModel = hiltViewModel(),
+    onNavigateToBudgetPlanning: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
@@ -63,8 +64,6 @@ fun ChatScreen(
     var showScheduleDialog by remember { mutableStateOf(false) }
     // 버킷리스트 추가 바텀시트 상태
     var showBucketSheet by remember { mutableStateOf(false) }
-    // 예산 수정 다이얼로그 상태
-    var showBudgetEditDialog by remember { mutableStateOf(false) }
     
     // 일정 공유 Dialog
     if (showScheduleDialog) {
@@ -116,7 +115,7 @@ fun ChatScreen(
             onShareSchedule = { showScheduleDialog = true },
             onShareLocation = { shareLocation() },
             onAddBucket = { showBucketSheet = true },
-            onEditBudget = { showBudgetEditDialog = true }
+            onEditBudget = { onNavigateToBudgetPlanning() }
         )
     }
 
@@ -131,15 +130,7 @@ fun ChatScreen(
         )
     }
 
-    if (showBudgetEditDialog) {
-        BudgetEditDialog(
-            onDismiss = { showBudgetEditDialog = false },
-            onConfirm = { amount ->
-                viewModel.updateBudget(amount)
-                showBudgetEditDialog = false
-            }
-        )
-    }
+
 }
 
 @Composable

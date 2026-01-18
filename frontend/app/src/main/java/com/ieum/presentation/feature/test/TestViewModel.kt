@@ -1,10 +1,18 @@
 package com.ieum.presentation.feature.test
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.ieum.domain.repository.TestRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class TestViewModel : ViewModel() {
+@HiltViewModel
+class TestViewModel @Inject constructor(
+    private val testRepository: TestRepository
+) : ViewModel() {
     private val _currentScreen = MutableStateFlow<TestScreenState>(TestScreenState.Intro)
     val currentScreen = _currentScreen.asStateFlow()
 
@@ -49,6 +57,10 @@ class TestViewModel : ViewModel() {
             'E' to (counts['E'] ?: 0), 'C' to (counts['C'] ?: 0),
             'P' to (counts['P'] ?: 0), 'F' to (counts['F'] ?: 0)
         )
+        
+        viewModelScope.launch {
+            testRepository.saveMbtiResult(mbti)
+        }
 
         _currentScreen.value = TestScreenState.Result(mbti, scoreMap)
     }

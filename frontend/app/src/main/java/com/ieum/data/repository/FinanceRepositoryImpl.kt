@@ -26,7 +26,7 @@ class FinanceRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : FinanceRepository {
 
-    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "finance_prefs")
+    private val Context.financeDataStore: DataStore<Preferences> by preferencesDataStore(name = "finance_prefs")
     private val EXPENSES_KEY = stringPreferencesKey("expenses_json")
     private val gson = Gson()
 
@@ -43,7 +43,7 @@ class FinanceRepositoryImpl @Inject constructor(
     }
 
     private suspend fun loadExpenses() {
-        val preferences = context.dataStore.data.first()
+        val preferences = context.financeDataStore.data.first()
         val json = preferences[EXPENSES_KEY]
         if (json != null) {
             val type = object : TypeToken<List<Expense>>() {}.type
@@ -67,7 +67,7 @@ class FinanceRepositoryImpl @Inject constructor(
 
     private suspend fun saveExpenses(list: List<Expense>) {
         val json = gson.toJson(list)
-        context.dataStore.edit { prefs ->
+        context.financeDataStore.edit { prefs ->
             prefs[EXPENSES_KEY] = json
         }
     }

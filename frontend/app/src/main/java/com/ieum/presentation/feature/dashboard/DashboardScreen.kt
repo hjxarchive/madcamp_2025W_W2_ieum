@@ -29,7 +29,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
-    onNavigateToCalendar: () -> Unit
+    onNavigateToCalendar: () -> Unit,
+    onNavigateToProfile: () -> Unit,
+    onNavigateToBudgetPlanning: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -58,7 +60,7 @@ fun DashboardScreen(
                     color = Color(0xFF5A3E2B)
                 )
                 IconButton(
-                    onClick = { /* 프로필 이동 */ },
+                    onClick = onNavigateToProfile,
                     modifier = Modifier.size(45.dp)
                 ) {
                     Icon(
@@ -166,7 +168,9 @@ fun DashboardScreen(
                         shape = RoundedCornerShape(32.dp),
                         colors = CardDefaults.cardColors(containerColor = uiState.containerColor),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onNavigateToBudgetPlanning() }
                     ) {
                         Column(modifier = Modifier.padding(24.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {

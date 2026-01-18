@@ -9,11 +9,12 @@ data class Expense(
 )
 
 enum class ExpenseCategory(val label: String, val colorHex: String) {
-    FOOD("식비", "#FF6B6B"),
-    CAFE("카페", "#8B4513"),
-    DRINK("술", "#DAA520"),
-    CULTURE("문화생활", "#9B59B6"),
-    TRAVEL("여행", "#4ECDC4"),
+    FOOD("식비", "#BBA288"),
+    CULTURE("문화생활", "#E1C3B3"),
+    DRINK("술", "#C8B7A5"),
+    CAFE("카페", "#ECDDCD"),
+    TRAVEL("여행", "#ECD4CD"),
+    PHOTO("사진", "#E1BBB3"),
     OTHER("기타", "#9E9E9E")
 }
 
