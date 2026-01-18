@@ -7,11 +7,21 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import com.ieum.data.repository.AuthRepositoryImpl
+import com.ieum.domain.repository.AuthRepository
+
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
 
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: AuthRepositoryImpl
+    ): AuthRepository
+
+    // 기존의 다른 Repository 바인딩들...
     @Binds
     @Singleton
     abstract fun bindUserRepository(

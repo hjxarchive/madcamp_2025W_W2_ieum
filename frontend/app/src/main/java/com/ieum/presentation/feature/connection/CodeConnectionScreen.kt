@@ -4,7 +4,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Done
@@ -16,9 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -35,6 +37,45 @@ fun CodeConnectionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
+    val scrollState = rememberScrollState()
+
+    // 화면 크기 가져오기
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val screenWidth = configuration.screenWidthDp.dp
+
+    // 반응형 크기 계산
+    val isSmallScreen = screenHeight < 700.dp
+    val isMediumScreen = screenHeight in 700.dp..850.dp
+
+    val topPadding = when {
+        isSmallScreen -> 24.dp
+        isMediumScreen -> 40.dp
+        else -> 60.dp
+    }
+
+    val titleFontSize = when {
+        isSmallScreen -> 18.sp
+        isMediumScreen -> 20.sp
+        else -> 22.sp
+    }
+
+    val dogImageHeight = when {
+        isSmallScreen -> (screenHeight * 0.25f)
+        isMediumScreen -> (screenHeight * 0.30f)
+        else -> (screenHeight * 0.35f)
+    }
+
+    val codeFontSize = when {
+        isSmallScreen -> 24.sp
+        else -> 29.sp
+    }
+
+    val sectionSpacing = when {
+        isSmallScreen -> 30.dp
+        isMediumScreen -> 50.dp
+        else -> 75.dp
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // 배경 설정
@@ -48,39 +89,42 @@ fun CodeConnectionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 60.dp),
+                .verticalScroll(scrollState)
+                .padding(horizontal = 24.dp)
+                .padding(top = topPadding, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. 메인 문구 (상단 고정)
-            Spacer(modifier = Modifier.height(60.dp))
+            // 1. 메인 문구
+            Spacer(modifier = Modifier.height(if (isSmallScreen) 20.dp else 40.dp))
             Text(
                 text = "서로의 코드를 입력하고\n이음을 시작하세요.",
-                fontSize = 22.sp,
-                lineHeight = 32.sp,
+                fontSize = titleFontSize,
+                lineHeight = titleFontSize * 1.4f,
                 textAlign = TextAlign.Center,
                 color = uiState.mainTextColor,
-                modifier = Modifier.padding(top = 20.dp)
+                modifier = Modifier.padding(top = if (isSmallScreen) 8.dp else 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(10.dp)) // 문구와 강아지 사이 간격
+            // 2. 강아지 이미지 (반응형 높이)
+            Spacer(modifier = Modifier.height(if (isSmallScreen) 8.dp else 10.dp))
             Image(
                 painter = painterResource(id = R.drawable.dog),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp), // ⬅️ 강아지 크기를 여기서 조절하세요! (너무 크면 줄여보세요)
+                    .height(dogImageHeight),
                 colorFilter = ColorFilter.tint(Color(0xFFE6C8A0).copy(alpha = 0.6f)),
                 contentScale = ContentScale.Fit
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(if (isSmallScreen) 8.dp else 10.dp))
 
-            // 3. 나의 이음 코드 섹션 (하단 고정 영역 시작)
+            // 3. 나의 이음 코드 섹션
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "나의 이음 코드",
-                    fontSize = 19.sp,
+                    fontSize = if (isSmallScreen) 16.sp else 19.sp,
                     color = uiState.mainTextColor.copy(alpha = 0.8f),
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    modifier = Modifier.padding(bottom = if (isSmallScreen) 8.dp else 12.dp)
                 )
 
                 Row(
@@ -91,7 +135,7 @@ fun CodeConnectionScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = uiState.myCode,
-                            fontSize = 29.sp,
+                            fontSize = codeFontSize,
                             letterSpacing = 4.sp,
                             textAlign = TextAlign.Center,
                             color = Color(0xFF5A3E2B),
@@ -99,7 +143,7 @@ fun CodeConnectionScreen(
                         )
                         Box(
                             modifier = Modifier
-                                .width(160.dp)
+                                .width(if (isSmallScreen) 140.dp else 160.dp)
                                 .height(2.dp)
                                 .background(Color(0xFF5A3E2B))
                         )
@@ -116,30 +160,30 @@ fun CodeConnectionScreen(
                             imageVector = if (uiState.isCopied) Icons.Default.Done else Icons.Default.ContentCopy,
                             contentDescription = "Copy",
                             tint = Color(0xFF5A3E2B),
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(75.dp))
+            Spacer(modifier = Modifier.height(sectionSpacing))
 
             // 4. 하단 코드 입력 섹션
             if (!uiState.showCodeInput) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "혹시,\n 이미 상대방의 이음 코드를 가지고 계신가요?",
-                        fontSize = 15.sp,
+                        text = "혹시,\n이미 상대방의 이음 코드를 가지고 계신가요?",
+                        fontSize = if (isSmallScreen) 13.sp else 15.sp,
                         textAlign = TextAlign.Center,
                         color = uiState.mainTextColor.copy(alpha = 0.8f),
                     )
                     Text(
                         text = "코드 입력하기",
-                        fontSize = 16.sp,
+                        fontSize = if (isSmallScreen) 14.sp else 16.sp,
                         color = Color(0xFF5A3E2B),
                         textDecoration = TextDecoration.Underline,
                         modifier = Modifier
-                            .padding(vertical = 12.dp)
+                            .padding(vertical = if (isSmallScreen) 8.dp else 12.dp)
                             .clickable { viewModel.toggleCodeInput(true) }
                     )
                 }
@@ -153,7 +197,7 @@ fun CodeConnectionScreen(
                             value = uiState.partnerCode,
                             onValueChange = { viewModel.onPartnerCodeChange(it) },
                             textStyle = androidx.compose.ui.text.TextStyle(
-                                fontSize = 20.sp,
+                                fontSize = if (isSmallScreen) 18.sp else 20.sp,
                                 textAlign = TextAlign.Center,
                                 letterSpacing = 4.sp,
                                 color = Color(0xFF5A3E2B)
@@ -164,29 +208,29 @@ fun CodeConnectionScreen(
                                     if (uiState.partnerCode.isEmpty()) {
                                         Text(
                                             text = "상대방의 코드를 입력하세요",
-                                            fontSize = 16.sp,
+                                            fontSize = if (isSmallScreen) 14.sp else 16.sp,
                                             color = Color(0xFF5A3E2B).copy(alpha = 0.3f)
                                         )
                                     }
                                     innerTextField()
                                 }
                             },
-                            modifier = Modifier.width(240.dp)
+                            modifier = Modifier.width(if (isSmallScreen) 200.dp else 240.dp)
                         )
                         Box(
                             modifier = Modifier
                                 .padding(top = 8.dp)
-                                .width(200.dp)
+                                .width(if (isSmallScreen) 170.dp else 200.dp)
                                 .height(1.dp)
                                 .background(Color(0xFF5A3E2B).copy(alpha = 0.2f))
                         )
                     }
 
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(if (isSmallScreen) 16.dp else 24.dp))
 
                     Text(
                         text = "초대장 보내기",
-                        fontSize = 18.sp,
+                        fontSize = if (isSmallScreen) 16.sp else 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (uiState.partnerCode.length == 6) Color(0xFF5A3E2B) else Color(0xFF5A3E2B).copy(alpha = 0.4f),
                         modifier = Modifier
@@ -197,6 +241,9 @@ fun CodeConnectionScreen(
                     )
                 }
             }
+
+            // 하단 여백
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 
