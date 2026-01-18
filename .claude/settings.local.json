@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew installDebug:*)",
+      "Bash(adb logcat:*)",
+      "Bash(./gradlew :app:compileDebugKotlin:*)"
+    ]
+  }
+}
