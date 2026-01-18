@@ -33,6 +33,7 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
+    onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: ChatViewModel = hiltViewModel()
 ) {
@@ -42,14 +43,51 @@ fun ChatScreen(
     val messages = uiState.messages
     val messageText = uiState.inputText
     val partnerName = uiState.partnerName
+    val context = androidx.compose.ui.platform.LocalContext.current
     
+    // 네이버 지도 실행 Intent
+    fun shareLocation() {
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("nmap://map"))
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        val componentName = intent.resolveActivity(context.packageManager)
+        if (componentName != null) {
+            context.startActivity(intent)
+        } else {
+             // 네이버 지도 없으면 스토어 연결 (선택사항)
+             val storeIntent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=com.nhn.android.nmap"))
+             context.startActivity(storeIntent)
+        }
+    }
+
+    // 일정 공유 다이얼로그 상태
+    var showScheduleDialog by remember { mutableStateOf(false) }
+    // 버킷리스트 추가 바텀시트 상태
+    var showBucketSheet by remember { mutableStateOf(false) }
+    // 예산 수정 다이얼로그 상태
+    var showBudgetEditDialog by remember { mutableStateOf(false) }
+    
+    // 일정 공유 Dialog
+    if (showScheduleDialog) {
+        ScheduleSelectionDialog(
+            currentMonth = uiState.sharingYearMonth,
+            schedules = uiState.sharingSchedules,
+            onDismiss = { showScheduleDialog = false },
+            onPreviousMonth = { viewModel.navigateSharingMonth(-1) },
+            onNextMonth = { viewModel.navigateSharingMonth(1) },
+            onScheduleSelected = { schedule ->
+                viewModel.shareSchedule(schedule)
+                showScheduleDialog = false
+            }
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFF8F4F0)) // 따뜻한 베이지 톤 배경
     ) {
         // 상단 헤더
-        ChatHeader(partnerName = partnerName)
+        ChatHeader(partnerName = partnerName, onBackClick = onBackClick)
         
         // 메시지 목록
         LazyColumn(
@@ -75,15 +113,138 @@ fun ChatScreen(
                     viewModel.sendMessage(messageText)
                 }
             },
-            onAttachClick = { /* 첨부 파일 */ },
-            onShareClick = { /* 공유 메뉴 */ }
+            onShareSchedule = { showScheduleDialog = true },
+            onShareLocation = { shareLocation() },
+            onAddBucket = { showBucketSheet = true },
+            onEditBudget = { showBudgetEditDialog = true }
+        )
+    }
+
+    if (showBucketSheet) {
+        com.ieum.presentation.feature.calendar.CommonAddBottomSheet(
+            type = "버킷리스트",
+            onDismiss = { showBucketSheet = false },
+            onConfirm = { title, _, _ ->
+                viewModel.addBucketList(title)
+                showBucketSheet = false
+            }
+        )
+    }
+
+    if (showBudgetEditDialog) {
+        BudgetEditDialog(
+            onDismiss = { showBudgetEditDialog = false },
+            onConfirm = { amount ->
+                viewModel.updateBudget(amount)
+                showBudgetEditDialog = false
+            }
         )
     }
 }
 
+@Composable
+fun ScheduleSelectionDialog(
+    currentMonth: java.time.YearMonth,
+    schedules: List<com.ieum.domain.model.Schedule>,
+    onDismiss: () -> Unit,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onScheduleSelected: (com.ieum.domain.model.Schedule) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = null,
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 월 네비게이션
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onPreviousMonth) {
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "이전 달")
+                    }
+                    Text(
+                        text = "${currentMonth.year}년 ${currentMonth.monthValue}월",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onNextMonth) {
+                        Icon(Icons.Default.ChevronRight, contentDescription = "다음 달")
+                    }
+                }
+                
+                HorizontalDivider()
+                
+                // 일정 목록
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (schedules.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("일정이 없습니다.", color = Color.Gray)
+                            }
+                        }
+                    } else {
+                        items(schedules) { schedule ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onScheduleSelected(schedule) },
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                elevation = CardDefaults.cardElevation(2.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(4.dp)
+                                            .height(32.dp)
+                                            .background(Color(android.graphics.Color.parseColor(schedule.colorHex)))
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column {
+                                        Text(
+                                            text = schedule.title,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = schedule.date.toString(),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기", color = IeumColors.TextSecondary)
+            }
+        },
+        containerColor = Color(0xFFF8F4F0)
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatHeader(partnerName: String) {
+private fun ChatHeader(partnerName: String, onBackClick: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = IeumColors.Background,
@@ -92,10 +253,11 @@ private fun ChatHeader(partnerName: String) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { }) {
+            IconButton(onClick = onBackClick) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "뒤로가기",
@@ -132,37 +294,13 @@ private fun ChatHeader(partnerName: String) {
                     ),
                     color = IeumColors.TextPrimary
                 )
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(IeumColors.Success)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "온라인",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = IeumColors.TextSecondary
-                    )
-                }
             }
             
+            // 돋보기 (검색) 아이콘
             IconButton(onClick = { }) {
                 Icon(
-                    imageVector = Icons.Outlined.Call,
-                    contentDescription = "통화",
-                    tint = IeumColors.TextSecondary
-                )
-            }
-            
-            IconButton(onClick = { }) {
-                Icon(
-                    imageVector = Icons.Outlined.MoreVert,
-                    contentDescription = "더보기",
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "검색",
                     tint = IeumColors.TextSecondary
                 )
             }
@@ -199,7 +337,7 @@ private fun MessageItem(message: ChatMessage) {
 
 @Composable
 private fun TextMessageBubble(message: ChatMessage) {
-    val backgroundColor = if (message.isMe) IeumColors.Primary else Color.White
+    val backgroundColor = if (message.isMe) Color(0xFFE0C4BB) else Color.White
     val textColor = if (message.isMe) Color.White else IeumColors.TextPrimary
     val shape = if (message.isMe) {
         RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp)
@@ -410,69 +548,106 @@ private fun ChatInputBar(
     text: String,
     onTextChange: (String) -> Unit,
     onSendClick: () -> Unit,
-    onAttachClick: () -> Unit,
-    onShareClick: () -> Unit
+    onShareSchedule: () -> Unit,
+    onShareLocation: () -> Unit,
+    onAddBucket: () -> Unit,
+    onEditBudget: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 8.dp
-    ) {
+    val darkBeige = Color(0xFFE0C4BB) // 0xFFECD4CD 보다 약간 어두운 색
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        
+        // 상단 버튼 4개 (투명 배경)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 공유 버튼 (일정, 장소, 버킷리스트)
-            IconButton(onClick = onShareClick) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = "공유",
-                    tint = IeumColors.Primary
-                )
+            // 버튼 스타일: 꽉 채운 색상, 약간 더 크게
+            @Composable
+            fun ActionButton(text: String, onClick: () -> Unit) {
+                Surface(
+                        onClick = onClick,
+                        shape = RoundedCornerShape(20.dp),
+                        color = darkBeige, // Filled color
+                        shadowElevation = 2.dp
+                ) {
+                    Text(
+                        text = text,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), // Increased padding
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White, // White text for contrast
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             
-            // 입력 필드
-            TextField(
-                value = text,
-                onValueChange = onTextChange,
-                modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(
-                        text = "메시지를 입력하세요",
-                        color = IeumColors.TextSecondary.copy(alpha = 0.6f)
-                    )
-                },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFFF5F5F5),
-                    unfocusedContainerColor = Color(0xFFF5F5F5),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(24.dp),
-                singleLine = false,
-                maxLines = 4
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            // 전송 버튼
-            IconButton(
-                onClick = onSendClick,
+            // Row scrollable if needed, but 4 buttons might fit or wrap. 
+            // The user didn't mention scrolling, but 4 large buttons might overflow. 
+            // Let's use a horizontal scroll row just in case.
+            Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionButton("일정 공유", onShareSchedule)
+                ActionButton("위치 공유", onShareLocation)
+                ActionButton("버킷리스트 추가", onAddBucket)
+                ActionButton("예산 수정", onEditBudget)
+            }
+        }
+        
+        // 입력 필드 (흰색 배경)
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = Color.White,
+            shadowElevation = 8.dp
+        ) {
+            Row(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (text.isNotBlank()) IeumColors.Primary
-                        else IeumColors.Primary.copy(alpha = 0.3f)
-                    )
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "전송",
-                    tint = Color.White
+                // 입력 필드
+                TextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text(
+                            text = "메시지를 입력하세요",
+                            color = IeumColors.TextSecondary.copy(alpha = 0.6f)
+                        )
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF5F5F5),
+                        unfocusedContainerColor = Color(0xFFF5F5F5),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    singleLine = false,
+                    maxLines = 4
                 )
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                // 전송 버튼
+                IconButton(
+                    onClick = onSendClick,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (text.isNotBlank()) darkBeige
+                            else darkBeige.copy(alpha = 0.3f)
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "전송",
+                        tint = Color.White
+                    )
+                }
             }
         }
     }

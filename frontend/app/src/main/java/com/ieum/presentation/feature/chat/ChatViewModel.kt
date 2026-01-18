@@ -15,7 +15,11 @@ import javax.inject.Inject
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val getChatMessagesUseCase: GetChatMessagesUseCase,
-    private val sendMessageUseCase: SendMessageUseCase
+    private val sendMessageUseCase: SendMessageUseCase,
+    private val chatRepository: com.ieum.domain.repository.ChatRepository,
+    private val getSchedulesForMonthUseCase: com.ieum.domain.usecase.schedule.GetSchedulesForMonthUseCase,
+    private val bucketRepository: com.ieum.domain.repository.BucketRepository,
+    private val financeRepository: com.ieum.domain.repository.FinanceRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -23,6 +27,7 @@ class ChatViewModel @Inject constructor(
 
     init {
         loadMessages()
+        loadSharingSchedules() // 초기 로딩
     }
 
     private fun loadMessages() {
@@ -56,6 +61,45 @@ class ChatViewModel @Inject constructor(
                 sendMessageUseCase(text)
                 _uiState.value = _uiState.value.copy(inputText = "")
             }
+        }
+    }
+    
+    // --- 일정 공유 관련 ---
+    
+    fun loadSharingSchedules() {
+        viewModelScope.launch {
+            getSchedulesForMonthUseCase(_uiState.value.sharingYearMonth)
+                .catch { }
+                .collect { schedules ->
+                    _uiState.value = _uiState.value.copy(sharingSchedules = schedules)
+                }
+        }
+    }
+
+    fun navigateSharingMonth(offset: Int) {
+        val newMonth = _uiState.value.sharingYearMonth.plusMonths(offset.toLong())
+        _uiState.value = _uiState.value.copy(sharingYearMonth = newMonth)
+        loadSharingSchedules()
+    }
+
+    fun shareSchedule(schedule: com.ieum.domain.model.Schedule) {
+        viewModelScope.launch {
+            chatRepository.shareSchedule(
+                title = schedule.title,
+                date = schedule.date.toString()
+            )
+        }
+    }
+
+    fun addBucketList(title: String) {
+        viewModelScope.launch {
+            bucketRepository.addBucketItem(title, com.ieum.domain.model.BucketCategory.SPECIAL)
+        }
+    }
+
+    fun updateBudget(amount: Int) {
+        viewModelScope.launch {
+            financeRepository.setBudget(amount)
         }
     }
 }

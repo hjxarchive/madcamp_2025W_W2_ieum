@@ -7,5 +7,7 @@ data class ChatUiState(
     val inputText: String = "",
     val partnerName: String = "수현",
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val sharingYearMonth: java.time.YearMonth = java.time.YearMonth.now(),
+    val sharingSchedules: List<com.ieum.domain.model.Schedule> = emptyList()
 )

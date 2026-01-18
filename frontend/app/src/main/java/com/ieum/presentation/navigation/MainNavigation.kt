@@ -145,8 +145,8 @@ fun MainScreen(
         modifier = modifier,
         containerColor = Color.Transparent,
         bottomBar = {
-            // ✅ 캘린더 화면(index 1)이 아닐 때만 바텀 바를 표시합니다.
-            if (selectedItem != 1) {
+            // ✅ 캘린더 화면(index 1)과 채팅 화면(index 3)이 아닐 때만 바텀 바를 표시합니다.
+            if (selectedItem != 1 && selectedItem != 3) {
                 IeumBottomNavigation(
                     selectedIndex = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -158,7 +158,7 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 // 바텀 바가 숨겨질 때는 패딩을 주지 않아 화면을 꽉 채우게 합니다.
-                .padding(if (selectedItem != 1) paddingValues else PaddingValues(0.dp))
+                .padding(if (selectedItem != 1 && selectedItem != 3) paddingValues else PaddingValues(0.dp))
         ) {
             AnimatedContent(
                 targetState = selectedItem,
@@ -173,7 +173,7 @@ fun MainScreen(
                     // ✅ 뒤로 가기 시 다시 대시보드(index 4)로 돌아오도록 설정
                     BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 4 })
                     BottomNavItem.MapGallery -> MapGalleryContent()
-                    BottomNavItem.Chat -> ChatContent()
+                    BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 4 })
                     BottomNavItem.Dashboard -> DashboardContent(
                         onNavigateToCalendar = { selectedItem = 1 }
                     )
@@ -237,8 +237,10 @@ private fun MapGalleryContent() {
 }
 
 @Composable
-private fun ChatContent() {
-    com.ieum.presentation.feature.chat.ChatScreen()
+private fun ChatContent(onBack: () -> Unit) {
+    com.ieum.presentation.feature.chat.ChatScreen(
+        onBackClick = onBack
+    )
 }
 
 @Composable

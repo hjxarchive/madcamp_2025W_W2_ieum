@@ -132,7 +132,7 @@ fun CalendarScreen(
                 Column { // 헤더와 내용 묶기
                     SectionHeader("우리의 일정")
                     if (uiState.selectedDateSchedules.isEmpty()) {
-                        EmptyScheduleView()
+                        EmptyScheduleView("일정이 없습니다.")
                     } else {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { // 일정 내 아이템 간격
                             uiState.selectedDateSchedules.forEach { schedule ->
@@ -158,7 +158,7 @@ fun CalendarScreen(
                     val dayExpenses = uiState.expenses.filter { it.date == currentDayString }
 
                     if (dayExpenses.isEmpty()) {
-                        EmptyScheduleView()
+                        EmptyScheduleView("지출 내역이 없습니다.")
                     } else {
                          Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                              dayExpenses.forEach { expense ->
@@ -618,9 +618,9 @@ private fun CalendarDay(day: Int, isSelected: Boolean, isToday: Boolean, hasSche
 }
 
 @Composable
-private fun EmptyScheduleView() {
+private fun EmptyScheduleView(text: String) {
     Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-        Text("일정이 없습니다.", color = Color.Gray)
+        Text(text, color = Color.Gray)
     }
 }
 
