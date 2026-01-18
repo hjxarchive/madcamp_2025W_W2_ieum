@@ -3,7 +3,7 @@ package com.ieum.domain.model
 import java.time.LocalDate
 
 data class Schedule(
-    val id: Long,
+    val id: Int,
     val title: String,
     val date: LocalDate,
     val time: String,

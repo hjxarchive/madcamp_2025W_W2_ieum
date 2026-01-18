@@ -7,32 +7,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.outlined.Chat
-import androidx.compose.material.icons.outlined.Dashboard
-import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Place
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -42,15 +24,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.ieum.presentation.feature.login.LoginScreen
 import com.ieum.presentation.theme.IeumColors
-/**
- * Root Routes
- * - 앱 실행 시 LOGIN 먼저
- * - 로그인 성공 시 MAIN(하단탭)으로
- */
 
 /**
- * ✅ 앱의 "진짜 메인 네비게이션"
- * - startDestination = LOGIN (에뮬 실행하면 로그인부터)
+ * ✅ 앱의 루트 네비게이션
  */
 @Composable
 fun MainNavigation() {
@@ -60,46 +36,63 @@ fun MainNavigation() {
         navController = navController,
         startDestination = Routes.LOGIN
     ) {
-        // 1. 로그인 화면
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // 로그인 성공 시 MBTI 테스트로 이동
                     navController.navigate("connection_screen") {
-                        popUpTo(Routes.MBTI_TEST) { inclusive = true }
-                    }
-                }
-            )
-        }
-        /*composable(Routes.LOGIN) {
-            LoginScreen(
-                onLoginSuccess = {
-                    // 로그인 성공 시 MBTI 테스트로 이동
-                    navController.navigate(Routes.MBTI_TEST) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
             )
         }
 
-        // 2. MBTI 테스트 화면
-        composable(Routes.MBTI_TEST) {
-            com.ieum.presentation.feature.test.TestMainScreen(
-                onTestFinished = {
-                    // 테스트 종료 시 코드 연결 화면으로 이동
-                    navController.navigate("connection_screen") {
-                        popUpTo(Routes.MBTI_TEST) { inclusive = true }
-                    }
-                }
-            )
-        }*/
+        /*composable(Routes.LOGIN) {
 
-        // 3. 코드 연결 화면 (추가된 부분)
+    LoginScreen(
+
+        onLoginSuccess = {
+
+            // 로그인 성공 시 MBTI 테스트로 이동
+
+            navController.navigate(Routes.MBTI_TEST) {
+
+                popUpTo(Routes.LOGIN) { inclusive = true }
+
+            }
+
+        }
+
+    )
+
+}
+
+
+
+// 2. MBTI 테스트 화면
+
+composable(Routes.MBTI_TEST) {
+
+    com.ieum.presentation.feature.test.TestMainScreen(
+
+        onTestFinished = {
+
+            // 테스트 종료 시 코드 연결 화면으로 이동
+
+            navController.navigate("connection_screen") {
+
+                popUpTo(Routes.MBTI_TEST) { inclusive = true }
+
+            }
+
+        }
+
+    )
+
+}*/
+
         composable("connection_screen") {
-            // 이전에 만든 CodeConnectionScreen 호출
             com.ieum.presentation.feature.connection.CodeConnectionScreen(
                 onNavigateToMain = {
-                    // 초대 수락 완료 시 진짜 메인 화면으로 이동
                     navController.navigate(Routes.MAIN) {
                         popUpTo("connection_screen") { inclusive = true }
                     }
@@ -107,7 +100,6 @@ fun MainNavigation() {
             )
         }
 
-        // 4. 메인 화면 (대시보드 포함)
         composable(Routes.MAIN) {
             MainScreen()
         }
@@ -115,8 +107,7 @@ fun MainNavigation() {
 }
 
 /**
- * 하단 네비게이션 탭 정의
- * PDF 기준: 마이페이지, 캘린더, 지도갤러리, 채팅, 대시보드
+ * 하단 네비게이션 아이템 정의
  */
 sealed class BottomNavItem(
     val route: String,
@@ -124,40 +115,11 @@ sealed class BottomNavItem(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    data object MyPage : BottomNavItem(
-        route = "mypage",
-        title = "마이페이지",
-        selectedIcon = Icons.Filled.Person,
-        unselectedIcon = Icons.Outlined.Person
-    )
-
-    data object Calendar : BottomNavItem(
-        route = "calendar",
-        title = "캘린더",
-        selectedIcon = Icons.Filled.DateRange,
-        unselectedIcon = Icons.Outlined.DateRange
-    )
-
-    data object MapGallery : BottomNavItem(
-        route = "map_gallery",
-        title = "지도갤러리",
-        selectedIcon = Icons.Filled.Place,
-        unselectedIcon = Icons.Outlined.Place
-    )
-
-    data object Chat : BottomNavItem(
-        route = "chat",
-        title = "채팅",
-        selectedIcon = Icons.Filled.Chat,
-        unselectedIcon = Icons.Outlined.Chat
-    )
-
-    data object Dashboard : BottomNavItem(
-        route = "dashboard",
-        title = "대시보드",
-        selectedIcon = Icons.Filled.Dashboard,
-        unselectedIcon = Icons.Outlined.Dashboard
-    )
+    data object MyPage : BottomNavItem("mypage", "마이페이지", Icons.Filled.Person, Icons.Outlined.Person)
+    data object Calendar : BottomNavItem("calendar", "캘린더", Icons.Filled.DateRange, Icons.Outlined.DateRange)
+    data object MapGallery : BottomNavItem("map_gallery", "지도갤러리", Icons.Filled.Place, Icons.Outlined.Place)
+    data object Chat : BottomNavItem("chat", "채팅", Icons.Filled.Chat, Icons.Outlined.Chat)
+    data object Dashboard : BottomNavItem("dashboard", "대시보드", Icons.Filled.Dashboard, Icons.Outlined.Dashboard)
 }
 
 val bottomNavItems = listOf(
@@ -169,32 +131,35 @@ val bottomNavItems = listOf(
 )
 
 /**
- * 메인 화면 - 하단 네비게이션 포함
+ * ✅ 메인 화면 (대시보드 및 탭 전환)
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier
 ) {
-    var selectedItem by remember { mutableIntStateOf(4) } // 대시보드가 기본
+    // 대시보드가 기본 (index 4)
+    var selectedItem by remember { mutableIntStateOf(4) }
 
     Scaffold(
         modifier = modifier,
-        // ✅ Theme 배경 이미지(전체 통일) 덮지 않게 투명 처리 추천
         containerColor = Color.Transparent,
         bottomBar = {
-            IeumBottomNavigation(
-                selectedIndex = selectedItem,
-                onItemSelected = { selectedItem = it }
-            )
+            // ✅ 캘린더 화면(index 1)이 아닐 때만 바텀 바를 표시합니다.
+            if (selectedItem != 1) {
+                IeumBottomNavigation(
+                    selectedIndex = selectedItem,
+                    onItemSelected = { selectedItem = it }
+                )
+            }
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                // 바텀 바가 숨겨질 때는 패딩을 주지 않아 화면을 꽉 채우게 합니다.
+                .padding(if (selectedItem != 1) paddingValues else PaddingValues(0.dp))
         ) {
-            // 현재 선택된 탭에 따른 화면 표시
             AnimatedContent(
                 targetState = selectedItem,
                 transitionSpec = {
@@ -205,7 +170,8 @@ fun MainScreen(
             ) { index ->
                 when (bottomNavItems[index]) {
                     BottomNavItem.MyPage -> MyPageContent()
-                    BottomNavItem.Calendar -> CalendarContent()
+                    // ✅ 뒤로 가기 시 다시 대시보드(index 4)로 돌아오도록 설정
+                    BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 4 })
                     BottomNavItem.MapGallery -> MapGalleryContent()
                     BottomNavItem.Chat -> ChatContent()
                     BottomNavItem.Dashboard -> DashboardContent(
@@ -238,12 +204,7 @@ fun IeumBottomNavigation(
                         contentDescription = item.title
                     )
                 },
-                label = {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                },
+                label = { Text(text = item.title, style = MaterialTheme.typography.labelSmall) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = IeumColors.Primary,
                     selectedTextColor = IeumColors.Primary,
@@ -256,15 +217,18 @@ fun IeumBottomNavigation(
     }
 }
 
-// 실제 화면 컴포저블 import (각 feature 패키지에서)
+// --- 각 화면 연결 함수 (패키지 경로에 주의하세요) ---
+
 @Composable
 private fun MyPageContent() {
     com.ieum.presentation.feature.profile.MyPageScreen()
 }
 
 @Composable
-private fun CalendarContent() {
-    com.ieum.presentation.feature.calendar.CalendarScreen()
+private fun CalendarContent(onBack: () -> Unit) {
+    com.ieum.presentation.feature.calendar.CalendarScreen(
+        onBackClick = onBack
+    )
 }
 
 @Composable

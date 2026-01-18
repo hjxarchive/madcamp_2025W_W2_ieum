@@ -20,10 +20,10 @@ class FinanceRepositoryImpl @Inject constructor() : FinanceRepository {
 
     private val expenses = MutableStateFlow(
         listOf(
-            Expense(1L, "점심 식사", ExpenseCategory.FOOD, 12000, "2026.01.15"),
-            Expense(2L, "카페 라떼", ExpenseCategory.CAFE, 5500, "2026.01.14"),
-            Expense(3L, "맥주", ExpenseCategory.DRINK, 8000, "2026.01.13"),
-            Expense(4L, "영화 관람", ExpenseCategory.CULTURE, 15000, "2026.01.12")
+            Expense("101", "점심 식사", ExpenseCategory.FOOD, 12000, "2026.01.15"),
+            Expense("102", "카페 라떼", ExpenseCategory.CAFE, 5500, "2026.01.14"),
+            Expense("103", "맥주", ExpenseCategory.DRINK, 8000, "2026.01.13"),
+            Expense("104", "영화 관람", ExpenseCategory.CULTURE, 15000, "2026.01.12")
         )
     )
 
@@ -60,11 +60,13 @@ class FinanceRepositoryImpl @Inject constructor() : FinanceRepository {
     }
 
     override suspend fun addExpense(expense: Expense) {
-        val newExpense = expense.copy(id = ++idCounter)
+        // id가 String이므로 ++idCounter를 toString()으로 변환해야 합니다.
+        val newExpense = expense.copy(id = (++idCounter).toString())
         expenses.value = expenses.value + newExpense
     }
 
     override suspend fun deleteExpense(expenseId: Long) {
-        expenses.value = expenses.value.filter { it.id != expenseId }
+        // expense.id는 String이고 expenseId는 Long이므로 String으로 변환해서 비교합니다.
+        expenses.value = expenses.value.filter { it.id != expenseId.toString() }
     }
 }

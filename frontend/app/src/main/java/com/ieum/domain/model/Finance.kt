@@ -1,7 +1,7 @@
 package com.ieum.domain.model
 
 data class Expense(
-    val id: Long,
+    val id: String,
     val title: String,
     val category: ExpenseCategory,
     val amount: Int,

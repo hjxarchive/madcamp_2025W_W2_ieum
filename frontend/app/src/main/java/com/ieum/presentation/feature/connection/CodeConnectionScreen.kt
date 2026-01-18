@@ -156,7 +156,6 @@ fun CodeConnectionScreen(
                                 fontSize = 20.sp,
                                 textAlign = TextAlign.Center,
                                 letterSpacing = 4.sp,
-                                fontFamily = FontFamily.Monospace,
                                 color = Color(0xFF5A3E2B)
                             ),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF5A3E2B)),

@@ -17,7 +17,7 @@ class ScheduleRepositoryImpl @Inject constructor() : ScheduleRepository {
     private val schedules = MutableStateFlow(
         listOf(
             Schedule(
-                id = 1L,
+                id = 101,
                 title = "영화 데이트",
                 date = LocalDate.now().plusDays(2),
                 time = "14:00",
@@ -26,7 +26,7 @@ class ScheduleRepositoryImpl @Inject constructor() : ScheduleRepository {
                 description = "듄2 보기"
             ),
             Schedule(
-                id = 2L,
+                id = 102,
                 title = "카페 투어",
                 date = LocalDate.now().plusDays(5),
                 time = "15:00",
@@ -34,7 +34,7 @@ class ScheduleRepositoryImpl @Inject constructor() : ScheduleRepository {
                 isShared = true
             ),
             Schedule(
-                id = 3L,
+                id = 103,
                 title = "점심 약속",
                 date = LocalDate.now(),
                 time = "12:00",
@@ -70,6 +70,7 @@ class ScheduleRepositoryImpl @Inject constructor() : ScheduleRepository {
         )
     )
 
+    override fun getSchedules(): Flow<List<Schedule>> = schedules
     override fun getSchedulesForMonth(yearMonth: YearMonth): Flow<List<Schedule>> =
         schedules.map { list ->
             list.filter {
@@ -94,7 +95,7 @@ class ScheduleRepositoryImpl @Inject constructor() : ScheduleRepository {
         }
     }
 
-    override suspend fun deleteSchedule(scheduleId: Long) {
+    override suspend fun deleteSchedule(scheduleId: Int) {
         schedules.value = schedules.value.filter { it.id != scheduleId }
     }
 }
