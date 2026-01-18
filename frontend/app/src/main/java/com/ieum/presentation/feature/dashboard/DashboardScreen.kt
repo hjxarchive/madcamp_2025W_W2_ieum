@@ -24,9 +24,11 @@ import com.ieum.R
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 
+import androidx.hilt.navigation.compose.hiltViewModel
+
 @Composable
 fun DashboardScreen(
-    viewModel: DashboardViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    viewModel: DashboardViewModel = hiltViewModel(),
     onNavigateToCalendar: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()

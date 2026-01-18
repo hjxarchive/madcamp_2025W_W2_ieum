@@ -78,7 +78,13 @@ fun CalendarScreen(
             )
         }
     ) { innerPadding ->
-        LazyColumn(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.spacedBy(30.dp), // ✅ 전체 아이템 간 간격 30dp로 증가
+            contentPadding = PaddingValues(bottom = 100.dp) // 하단 여백 추가
+        ) {
             // 1. 달력 부분
             item {
                 CalendarHeader(
@@ -86,7 +92,7 @@ fun CalendarScreen(
                     onPreviousMonth = { viewModel.navigateMonth(-1) },
                     onNextMonth = { viewModel.navigateMonth(1) }
                 )
-                Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) { // 좌우 패딩 증가
                     WeekDayHeader()
                     CalendarGrid(
                         yearMonth = uiState.currentMonth,
@@ -99,65 +105,75 @@ fun CalendarScreen(
 
             // 2. 기념일 섹션
             item {
-                SectionHeader("기념일")
-                HorizontalCardRow(items = uiState.anniversaries, emptyText = "등록된 기념일이 없습니다.") { anniversary ->
-                    DDayCard(emoji = "💕", title = anniversary.title, dDay = calculateDDay(anniversary.date), color = IeumColors.Primary, onLongClick = { anniversaryToDelete = anniversary })
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { // 내부 간격 추가
+                    SectionHeader("기념일")
+                    HorizontalCardRow(items = uiState.anniversaries, emptyText = "등록된 기념일이 없습니다.") { anniversary ->
+                        DDayCard(emoji = "💕", title = anniversary.title, dDay = calculateDDay(anniversary.date), color = IeumColors.Primary, onLongClick = { anniversaryToDelete = anniversary })
+                    }
                 }
             }
 
             item {
-                SectionHeader("우리의 버킷리스트")
-                HorizontalCardRow(items = uiState.bucketList, emptyText = "등록된 버킷리스트가 없습니다.") { bucket ->
-                    BucketCard(
-                        title = bucket.title,
-                        isCompleted = bucket.isCompleted,
-                        onClick = { viewModel.toggleBucketComplete(bucket.id) },
-                        onLongClick = { itemToDelete = bucket }
-                    )
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SectionHeader("우리의 버킷리스트")
+                    HorizontalCardRow(items = uiState.bucketList, emptyText = "등록된 버킷리스트가 없습니다.") { bucket ->
+                        BucketCard(
+                            title = bucket.title,
+                            isCompleted = bucket.isCompleted,
+                            onClick = { viewModel.toggleBucketComplete(bucket.id) },
+                            onLongClick = { itemToDelete = bucket }
+                        )
+                    }
                 }
             }
 
             // 3. 선택된 날짜 일정 섹션
             item {
-                SectionHeader("우리의 일정")
-            }
-
-            if (uiState.selectedDateSchedules.isEmpty()) {
-                item { EmptyScheduleView() }
-            } else {
-                items(uiState.selectedDateSchedules) { schedule ->
-                    ScheduleItem(
-                        schedule = schedule,
-                        onClick = {
-                            selectedSchedule = schedule // 클릭한 일정 저장
-                            activeSheetType = "일정"     // 수정용 바텀 시트 열기
+                Column { // 헤더와 내용 묶기
+                    SectionHeader("우리의 일정")
+                    if (uiState.selectedDateSchedules.isEmpty()) {
+                        EmptyScheduleView()
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { // 일정 내 아이템 간격
+                            uiState.selectedDateSchedules.forEach { schedule ->
+                                ScheduleItem(
+                                    schedule = schedule,
+                                    onClick = {
+                                        selectedSchedule = schedule
+                                        activeSheetType = "일정"
+                                    }
+                                )
+                            }
                         }
-                    )
+                    }
                 }
             }
 
             // 4. 선택된 날짜 지출 섹션
-            item { SectionHeader("${uiState.selectedDate.monthValue}월 ${uiState.selectedDate.dayOfMonth}일 지출") }
+            item {
+                Column {
+                    SectionHeader("${uiState.selectedDate.monthValue}월 ${uiState.selectedDate.dayOfMonth}일 지출")
+                    val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+                    val currentDayString = uiState.selectedDate.format(formatter)
+                    val dayExpenses = uiState.expenses.filter { it.date == currentDayString }
 
-            val formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd")
-            val currentDayString = uiState.selectedDate.format(formatter)
-            val dayExpenses = uiState.expenses.filter { it.date == currentDayString }
-
-            if (dayExpenses.isEmpty()) {
-                item { EmptyScheduleView() }
-            } else {
-                items(dayExpenses) { expense ->
-                    ExpenseCard(
-                        expense = expense,
-                        onClick = {
-                            selectedExpense = expense
-                            activeSheetType = "지출" // 상세/수정 모드로 시트 열기
-                        }
-                    )
+                    if (dayExpenses.isEmpty()) {
+                        EmptyScheduleView()
+                    } else {
+                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                             dayExpenses.forEach { expense ->
+                                 ExpenseCard(
+                                     expense = expense,
+                                     onClick = {
+                                         selectedExpense = expense
+                                         activeSheetType = "지출"
+                                     }
+                                 )
+                             }
+                         }
+                    }
                 }
             }
-
-            item { Spacer(modifier = Modifier.height(100.dp)) }
         }
     }
 

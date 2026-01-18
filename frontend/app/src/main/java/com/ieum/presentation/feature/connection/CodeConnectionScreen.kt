@@ -48,11 +48,12 @@ fun CodeConnectionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 60.dp),
+                .windowInsetsPadding(WindowInsets.systemBars) // 시스템 바 패딩 적용 (반응형 필수)
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. 메인 문구 (상단 고정)
-            Spacer(modifier = Modifier.height(60.dp))
+            // 1. 메인 문구 (상단)
+            Spacer(modifier = Modifier.weight(0.5f)) // 상단 여백 (가중치)
             Text(
                 text = "서로의 코드를 입력하고\n이음을 시작하세요.",
                 fontSize = 22.sp,
@@ -62,19 +63,22 @@ fun CodeConnectionScreen(
                 modifier = Modifier.padding(top = 20.dp)
             )
 
-            Spacer(modifier = Modifier.height(10.dp)) // 문구와 강아지 사이 간격
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // 2. 강아지 이미지 (화면 크기에 맞춰 유동적으로 조절)
             Image(
                 painter = painterResource(id = R.drawable.dog),
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp), // ⬅️ 강아지 크기를 여기서 조절하세요! (너무 크면 줄여보세요)
+                    .weight(1.5f), // 가중치를 줘서 남는 공간을 차지하게 함
                 colorFilter = ColorFilter.tint(Color(0xFFE6C8A0).copy(alpha = 0.6f)),
                 contentScale = ContentScale.Fit
             )
-            Spacer(modifier = Modifier.height(10.dp))
+            
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // 3. 나의 이음 코드 섹션 (하단 고정 영역 시작)
+            // 3. 나의 이음 코드 섹션
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "나의 이음 코드",
@@ -122,7 +126,7 @@ fun CodeConnectionScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(75.dp))
+            Spacer(modifier = Modifier.weight(0.5f)) // 중간 여백 (가중치)
 
             // 4. 하단 코드 입력 섹션
             if (!uiState.showCodeInput) {
@@ -197,6 +201,7 @@ fun CodeConnectionScreen(
                     )
                 }
             }
+             Spacer(modifier = Modifier.weight(0.5f)) // 하단 여백 추가
         }
     }
 
