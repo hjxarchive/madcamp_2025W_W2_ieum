@@ -60,29 +60,54 @@ fun MainNavigation() {
         navController = navController,
         startDestination = Routes.LOGIN
     ) {
+        // 1. 로그인 화면
         composable(Routes.LOGIN) {
-            // 로그인 성공하면 메인으로 이동
             LoginScreen(
                 onLoginSuccess = {
-                    navController.navigate(Routes.MBTI_TEST) {
-                        popUpTo(Routes.LOGIN) { inclusive = true } // 뒤로가기 시 로그인으로 안 돌아가게
-                    }
-                }
-            )
-        }
-
-        composable(Routes.MBTI_TEST) {
-            // 이전에 만든 TestMainScreen 호출
-            // 테스트가 종료되었을 때 Routes.MAIN으로 이동하는 로직을 추가하면 좋습니다.
-            com.ieum.presentation.feature.test.TestMainScreen(
-                onTestFinished = {
-                    navController.navigate(Routes.MAIN) {
+                    // 로그인 성공 시 MBTI 테스트로 이동
+                    navController.navigate("connection_screen") {
                         popUpTo(Routes.MBTI_TEST) { inclusive = true }
                     }
                 }
             )
         }
+        /*composable(Routes.LOGIN) {
+            LoginScreen(
+                onLoginSuccess = {
+                    // 로그인 성공 시 MBTI 테스트로 이동
+                    navController.navigate(Routes.MBTI_TEST) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            )
+        }
 
+        // 2. MBTI 테스트 화면
+        composable(Routes.MBTI_TEST) {
+            com.ieum.presentation.feature.test.TestMainScreen(
+                onTestFinished = {
+                    // 테스트 종료 시 코드 연결 화면으로 이동
+                    navController.navigate("connection_screen") {
+                        popUpTo(Routes.MBTI_TEST) { inclusive = true }
+                    }
+                }
+            )
+        }*/
+
+        // 3. 코드 연결 화면 (추가된 부분)
+        composable("connection_screen") {
+            // 이전에 만든 CodeConnectionScreen 호출
+            com.ieum.presentation.feature.connection.CodeConnectionScreen(
+                onNavigateToMain = {
+                    // 초대 수락 완료 시 진짜 메인 화면으로 이동
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo("connection_screen") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // 4. 메인 화면 (대시보드 포함)
         composable(Routes.MAIN) {
             MainScreen()
         }
@@ -183,7 +208,9 @@ fun MainScreen(
                     BottomNavItem.Calendar -> CalendarContent()
                     BottomNavItem.MapGallery -> MapGalleryContent()
                     BottomNavItem.Chat -> ChatContent()
-                    BottomNavItem.Dashboard -> DashboardContent()
+                    BottomNavItem.Dashboard -> DashboardContent(
+                        onNavigateToCalendar = { selectedItem = 1 }
+                    )
                 }
             }
         }
@@ -251,6 +278,8 @@ private fun ChatContent() {
 }
 
 @Composable
-private fun DashboardContent() {
-    com.ieum.presentation.feature.dashboard.DashboardScreen()
+private fun DashboardContent(onNavigateToCalendar: () -> Unit) {
+    com.ieum.presentation.feature.dashboard.DashboardScreen(
+        onNavigateToCalendar = onNavigateToCalendar
+    )
 }

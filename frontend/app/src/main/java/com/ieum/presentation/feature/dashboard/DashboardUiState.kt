@@ -1,9 +1,19 @@
 package com.ieum.presentation.feature.dashboard
 
-import com.ieum.domain.model.CoupleInfo
+import androidx.compose.ui.graphics.Color
+
+data class Anniversary(
+    val name: String,
+    val date: String,
+    val daysLeft: Int
+)
 
 data class DashboardUiState(
-    val coupleInfo: CoupleInfo? = null,
-    val isLoading: Boolean = false,
-    val error: String? = null
+    val daysTogether: Long = 0,
+    val partnerNames: String = "철수 & 영희",
+    val spentAmount: Int = 350000,
+    val totalBudget: Int = 500000,
+    val upcomingEvents: List<Anniversary> = emptyList(),
+    val mainTextColor: Color = Color(0xFF5A3E2B),
+    val containerColor: Color = Color(0xFFECD4CD)
 )
