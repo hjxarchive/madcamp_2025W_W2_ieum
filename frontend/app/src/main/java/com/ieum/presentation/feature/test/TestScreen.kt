@@ -206,17 +206,10 @@ fun IntroContent(textColor: Color, btnColor: Color, onStart: () -> Unit) {
 @Composable
 fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) {
     val currentIndex by viewModel.currentQuestionIndex.collectAsState()
-    val question = if (allQuestions.isNotEmpty()) allQuestions[currentIndex % allQuestions.size] else null
+    val shuffledQuestions by viewModel.shuffledQuestions.collectAsState()
+    val question = if (shuffledQuestions.isNotEmpty()) shuffledQuestions[currentIndex] else null
     var offsetX by remember { mutableStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(targetValue = offsetX)
-
-    // 디버깅 로그
-    LaunchedEffect(currentIndex) {
-        Log.d("TestScreen", "allQuestions.size = ${allQuestions.size}, currentIndex = $currentIndex")
-        question?.let {
-            Log.d("TestScreen", "Q${currentIndex + 1}: category=${it.category}, leftType=${it.leftType}, rightType=${it.rightType}")
-        }
-    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
@@ -427,10 +420,10 @@ fun ResultContent(
 
         // 5. 성향 수치 게이지 (시안 하단 영역)
         // 각 카테고리별로 9문제 중 해당 성향이 몇 개인지 수치화
-        GaugeBar("데이트 계획", scores['P'] ?: 0, scores['F'] ?: 0, "P", "F", btnColor)
         GaugeBar("소비 성향", scores['M'] ?: 0, scores['I'] ?: 0, "M", "I", btnColor)
         GaugeBar("갈등 해결", scores['D'] ?: 0, scores['T'] ?: 0, "D", "T", btnColor)
         GaugeBar("도전 성향", scores['E'] ?: 0, scores['C'] ?: 0, "E", "C", btnColor)
+        GaugeBar("데이트 계획", scores['P'] ?: 0, scores['F'] ?: 0, "P", "F", btnColor)
 
         Spacer(modifier = Modifier.height(40.dp))
 

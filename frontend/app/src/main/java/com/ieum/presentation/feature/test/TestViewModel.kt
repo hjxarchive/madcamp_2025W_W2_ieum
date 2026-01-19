@@ -20,9 +20,13 @@ class TestViewModel @Inject constructor(
     private val _answers = MutableStateFlow<List<Answer>>(emptyList())
     val currentQuestionIndex = MutableStateFlow(0)
 
+    private val _shuffledQuestions = MutableStateFlow<List<Question>>(emptyList())
+    val shuffledQuestions = _shuffledQuestions.asStateFlow()
+
     fun startTest() {
         _answers.value = emptyList()
         currentQuestionIndex.value = 0
+        _shuffledQuestions.value = allQuestions.shuffled()
         _currentScreen.value = TestScreenState.Testing
     }
 
