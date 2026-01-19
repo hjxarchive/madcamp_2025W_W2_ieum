@@ -48,6 +48,7 @@ fun CalendarScreen(
 
     // 선택된 지출 상태 관리 (수정/삭제용)
     var selectedExpense by remember { mutableStateOf<Expense?>(null) }
+    var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
     var itemToDelete by remember { mutableStateOf<com.ieum.domain.model.BucketItem?>(null) }
     var anniversaryToDelete by remember { mutableStateOf<Anniversary?>(null) }
     var selectedSchedule by remember { mutableStateOf<com.ieum.domain.model.Schedule?>(null) }
@@ -167,6 +168,9 @@ fun CalendarScreen(
                                      onClick = {
                                          selectedExpense = expense
                                          activeSheetType = "지출"
+                                     },
+                                     onLongClick = {
+                                         expenseToDelete = expense
                                      }
                                  )
                              }
@@ -175,6 +179,29 @@ fun CalendarScreen(
                 }
             }
         }
+    }
+
+    if (expenseToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { expenseToDelete = null },
+            title = { Text("지출 내역 삭제", fontWeight = FontWeight.Bold) },
+            text = { Text("'${expenseToDelete?.title}' 항목을 삭제하시겠습니까?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        expenseToDelete?.let { viewModel.deleteExpense(it.id) }
+                        expenseToDelete = null
+                    }
+                ) {
+                    Text("삭제", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { expenseToDelete = null }) {
+                    Text("취소")
+                }
+            }
+        )
     }
 
     if (itemToDelete != null) {
@@ -234,26 +261,27 @@ fun CalendarScreen(
                 selectedExpense = null
                 selectedSchedule = null
             },
-            onConfirm = { title, date, memo ->
+            onConfirm = { title, date, memo, category ->
                 when {
                     selectedSchedule != null -> {
-                        // ✅ 일정 수정 로직 (Repository에 update가 있다면 호출)
                         viewModel.addSchedule(title, date, memo)
                     }
                     selectedExpense != null -> {
-                        viewModel.addExpense(title, date, memo)
+                        // 수정 시에도 카테고리 반영 (필요시 viewModel.updateExpense도 고려 가능하나 현재는 addExpense 재사용)
+                        viewModel.addExpense(title, date, memo, category)
                     }
                     else -> { // 신규 추가 모드
                         when(type) {
                             "기념일" -> viewModel.addAnniversary(title, date)
                             "버킷리스트" -> viewModel.addBucketList(title)
                             "일정" -> viewModel.addSchedule(title, date, memo)
-                            "지출" -> viewModel.addExpense(title, date, memo)
+                            "지출" -> viewModel.addExpense(title, date, memo, category)
                         }
                     }
                 }
                 activeSheetType = null
                 selectedSchedule = null
+                selectedExpense = null
             },
             onDelete = {
                 if (type == "일정") {
@@ -263,47 +291,62 @@ fun CalendarScreen(
                 }
                 activeSheetType = null
                 selectedSchedule = null
+                selectedExpense = null
             }
         )
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ExpenseCard(
     expense: com.ieum.domain.model.Expense,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
+    val mainBrown = Color(0xFF5A3E2B)
+    val categoryColor = mainBrown.copy(alpha = 0.7f) // "아주 조금 연한 색"
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { onClick() }, // 클릭 시 상세 창 띄움
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White), // 배경색을 일정과 같은 흰색으로
+        colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            // 왼쪽에 19폰트로 세부내역
+            Text(
+                text = expense.title,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Medium,
+                color = mainBrown,
+                modifier = Modifier.weight(1f)
+            )
+
+            // 오른쪽에 항목 이름(세부 사항)과 가격
+            Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "${expense.category.name}",
-                    color = Color(0xFF8D7B68),
+                    text = expense.category.label,
+                    color = categoryColor,
                     fontSize = 12.sp
                 )
                 Text(
-                    text = expense.title,
-                    fontWeight = FontWeight.Medium,
+                    text = "￦ ${String.format("%,d", expense.amount)}",
+                    fontWeight = FontWeight.Bold,
+                    color = mainBrown,
                     fontSize = 16.sp
                 )
             }
-            Text(
-                text = "${expense.amount}원",
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF5A3E2B),
-                fontSize = 16.sp
-            )
         }
     }
 }
@@ -359,9 +402,9 @@ fun BucketCard(
 @Composable
 fun CommonAddBottomSheet(
     type: String,
-    editingExpense: Expense? = null,
+    editingExpense: com.ieum.domain.model.Expense? = null,
     onDismiss: () -> Unit,
-    onConfirm: (String, LocalDate, String) -> Unit,
+    onConfirm: (String, LocalDate, String, com.ieum.domain.model.ExpenseCategory?) -> Unit,
     onDelete: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -369,6 +412,7 @@ fun CommonAddBottomSheet(
 
     var title by remember { mutableStateOf(editingExpense?.title ?: "") }
     var memo by remember { mutableStateOf(editingExpense?.amount?.toString() ?: "") }
+    var selectedCategory by remember { mutableStateOf(editingExpense?.category ?: com.ieum.domain.model.ExpenseCategory.FOOD) }
 
     // 날짜 초기값 설정
     val initialDate = if (editingExpense != null) {
@@ -406,12 +450,45 @@ fun CommonAddBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (editingExpense != null) "지출 내역 상세" else "$type 추가",
-                    color = Color(0xFF8D7B68),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
+                // 지출 추가 옆에 세부 사항 리스트 (지출일 때만 표시)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (editingExpense != null) "지출 내역 상세" else "$type 추가",
+                        color = Color(0xFF8D7B68),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    if (type == "지출") {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        // 카테고리 선택 리스트 (가로 스크롤)
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            com.ieum.domain.model.ExpenseCategory.entries.filter { it != com.ieum.domain.model.ExpenseCategory.OTHER }.forEach { category ->
+                                val isSelected = selectedCategory == category
+                                val color = Color(android.graphics.Color.parseColor(category.colorHex))
+                                
+                                Surface(
+                                    onClick = { selectedCategory = category },
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = if (isSelected) color else color.copy(alpha = 0.2f),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Box(modifier = Modifier.padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = category.label,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (isSelected) Color.White else color
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // 수정 모드일 때만 삭제 버튼 표시
                 if (editingExpense != null) {
@@ -478,7 +555,11 @@ fun CommonAddBottomSheet(
 
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 FloatingActionButton(
-                    onClick = { if(title.isNotBlank()) onConfirm(title, selectedDate, memo) },
+                    onClick = { 
+                        if(title.isNotBlank()) {
+                            onConfirm(title, selectedDate, memo, if(type == "지출") selectedCategory else null)
+                        } 
+                    },
                     containerColor = Color(0xFFECD4CD),
                     contentColor = Color.White,
                     shape = CircleShape,

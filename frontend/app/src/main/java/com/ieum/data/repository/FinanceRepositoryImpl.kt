@@ -83,16 +83,19 @@ class FinanceRepositoryImpl @Inject constructor(
                 .mapValues { (_, expenses) -> expenses.sumOf { it.amount } }
         }
 
-    override fun getMonthlySpending(): Flow<List<MonthlySpending>> = MutableStateFlow(
-        listOf(
-            MonthlySpending("1월", 0),
-            MonthlySpending("2월", 0),
-            MonthlySpending("3월", 0),
-            MonthlySpending("4월", 0),
-            MonthlySpending("5월", 0),
-            MonthlySpending("6월", 0)
-        )
-    )
+    override fun getMonthlySpending(): Flow<List<MonthlySpending>> = expenses.map { list ->
+        val months = listOf("1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월")
+        months.map { month ->
+            val monthNum = month.replace("월", "").toInt()
+            val totalForMonth = list.filter { expense ->
+                try {
+                    val date = java.time.LocalDate.parse(expense.date, java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
+                    date.monthValue == monthNum
+                } catch (e: Exception) { false }
+            }.sumOf { it.amount }
+            MonthlySpending(month, totalForMonth)
+        }
+    }
 
     override suspend fun setBudget(amount: Int) {
         budgetAmount.value = amount

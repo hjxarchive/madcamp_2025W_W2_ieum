@@ -123,7 +123,7 @@ fun ChatScreen(
         com.ieum.presentation.feature.calendar.CommonAddBottomSheet(
             type = "버킷리스트",
             onDismiss = { showBucketSheet = false },
-            onConfirm = { title, _, _ ->
+            onConfirm = { title, _, _, _ ->
                 viewModel.addBucketList(title)
                 showBucketSheet = false
             }

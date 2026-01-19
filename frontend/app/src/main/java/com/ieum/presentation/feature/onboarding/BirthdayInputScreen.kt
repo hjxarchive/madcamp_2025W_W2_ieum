@@ -2,8 +2,6 @@ package com.ieum.presentation.feature.onboarding
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.*
@@ -165,47 +163,6 @@ fun BirthdayInputScreen(
                     tint = mainBrown,
                     modifier = Modifier.size(32.dp)
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun DatePickerWheel(
-    items: List<Int>,
-    selectedItem: Int,
-    onItemSelected: (Int) -> Unit,
-    suffix: String
-) {
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = items.indexOf(selectedItem).coerceAtLeast(0)
-    )
-    val mainBrown = Color(0xFF5A3E2B)
-    
-    Box(
-        modifier = Modifier.width(80.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            items(items.size) { index ->
-                val item = items[index]
-                val isSelected = item == selectedItem
-                
-                TextButton(
-                    onClick = { onItemSelected(item) },
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text(
-                        text = "$item$suffix",
-                        fontSize = if (isSelected) 18.sp else 14.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) mainBrown else mainBrown.copy(alpha = 0.4f)
-                    )
-                }
             }
         }
     }

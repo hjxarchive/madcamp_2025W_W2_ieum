@@ -118,14 +118,14 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    fun addExpense(title: String, date: LocalDate, memo: String) {
+    fun addExpense(title: String, date: LocalDate, memo: String, category: com.ieum.domain.model.ExpenseCategory? = null) {
         viewModelScope.launch {
             val amountValue = memo.toIntOrNull() ?: 0
 
             val newExpense = com.ieum.domain.model.Expense(
                 id = "", // 리포지토리에서 새로 할당하므로 비워둠
                 title = title,
-                category = com.ieum.domain.model.ExpenseCategory.FOOD,
+                category = category ?: com.ieum.domain.model.ExpenseCategory.FOOD,
                 amount = amountValue,
                 date = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd"))
             )

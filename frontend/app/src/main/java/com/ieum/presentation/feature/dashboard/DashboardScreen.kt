@@ -158,7 +158,7 @@ fun DashboardContent(
                         MenuButton("궁합", Icons.Default.Favorite, uiState, onClick = {
                             /* 클릭 시 동작: 예) println("궁합 클릭") */
                         })
-                        MenuButton("클리커", Icons.Default.PunchClock, uiState, onClick = {
+                        MenuButton("클리커", Icons.Default.SportsEsports, uiState, onClick = {
                             onNavigateToClicker()
                         })
                         MenuButton("추억", Icons.Default.Image, uiState, onClick = {
