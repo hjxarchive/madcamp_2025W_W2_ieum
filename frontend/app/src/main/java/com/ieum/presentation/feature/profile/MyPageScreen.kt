@@ -105,8 +105,11 @@ fun MyPageScreen(
 
 @Composable
 private fun CoupleProfileSection(uiState: ProfileUiState) {
-    val myName = uiState.coupleInfo?.user?.name ?: "나"
-    val partnerName = uiState.coupleInfo?.partner?.name ?: "파트너"
+    val myNickname = uiState.coupleInfo?.user?.nickname ?: "나"
+    val partnerNickname = uiState.coupleInfo?.partner?.nickname ?: "파트너"
+    
+    val myMbtiImage = getMbtiImage(uiState.myMbti)
+    val partnerMbtiImage = getMbtiImage(uiState.partnerMbti)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -122,15 +125,24 @@ private fun CoupleProfileSection(uiState: ProfileUiState) {
                     .background(Color(0xFFE0E0E0)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Filled.Person,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(40.dp)
-                )
+                if (myMbtiImage != -1) {
+                    Image(
+                        painter = painterResource(id = myMbtiImage),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = myName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MainBrown)
+            Text(text = myNickname, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MainBrown)
         }
 
         Spacer(modifier = Modifier.width(24.dp))
@@ -156,16 +168,47 @@ private fun CoupleProfileSection(uiState: ProfileUiState) {
                     .background(Color(0xFFE0E0E0)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Filled.Person,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(40.dp)
-                )
+                if (partnerMbtiImage != -1) {
+                    Image(
+                        painter = painterResource(id = partnerMbtiImage),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = partnerName, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MainBrown)
+            Text(text = partnerNickname, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MainBrown)
         }
+    }
+}
+
+private fun getMbtiImage(mbti: String?): Int {
+    return when (mbti) {
+        "MDEP" -> R.drawable.mdep_r
+        "MDEF" -> R.drawable.mdef_r
+        "MDCP" -> R.drawable.mdcp_r
+        "MDCF" -> R.drawable.mdcf_r
+        "MTEP" -> R.drawable.mtep_r
+        "MTEF" -> R.drawable.mtef_r
+        "MTCP" -> R.drawable.mtcp_r
+        "MTCF" -> R.drawable.mtcf_r
+        "IDEP" -> R.drawable.idep_r
+        "IDEF" -> R.drawable.idef_r
+        "IDCP" -> R.drawable.idcp_r
+        "IDCF" -> R.drawable.idcf_r
+        "ITEP" -> R.drawable.itep_r
+        "ITEF" -> R.drawable.itef_r
+        "ITCP" -> R.drawable.itcp_r
+        "ITCF" -> R.drawable.itcf_r
+        else -> -1
     }
 }
 
