@@ -80,15 +80,27 @@ class OnboardingViewModel @Inject constructor(
                     
                     // 생일을 Schedule로 추가
                     state.birthday?.let { birthday ->
-                        val currentYear = LocalDate.now().year
-                        val birthDateThisYear = try {
-                            birthday.withYear(currentYear)
+                        val today = LocalDate.now()
+                        var birthDateThisYear = try {
+                            birthday.withYear(today.year)
                         } catch (e: Exception) {
-                            // 2월 29일인 경우 등 유효하지 않은 날짜 처리 (평년의 경우 2월 28일로 설정)
                             if (birthday.monthValue == 2 && birthday.dayOfMonth == 29) {
-                                LocalDate.of(currentYear, 2, 28)
+                                LocalDate.of(today.year, 2, 28)
                             } else {
                                 birthday
+                            }
+                        }
+                        
+                        // 이미 지난 생일이면 내년으로 설정
+                        if (birthDateThisYear.isBefore(today)) {
+                            birthDateThisYear = try {
+                                birthday.withYear(today.year + 1)
+                            } catch (e: Exception) {
+                                if (birthday.monthValue == 2 && birthday.dayOfMonth == 29) {
+                                    LocalDate.of(today.year + 1, 2, 28)
+                                } else {
+                                    birthday
+                                }
                             }
                         }
                         
@@ -103,14 +115,26 @@ class OnboardingViewModel @Inject constructor(
                                 description = "생일을 축하합니다!"
                             )
                         )
+                        
+                        scheduleRepository.addAnniversary(
+                            com.ieum.domain.model.Anniversary(
+                                id = 0L,
+                                title = "${state.nickname} 생일",
+                                emoji = "🎂",
+                                dDay = "",
+                                date = birthDateThisYear
+                            )
+                        )
                     }
                     
-                    // 백일 단위 기념일 자동 생성
+                    // 기념일 자동 생성
                     state.anniversaryDate?.let { anniversaryDate ->
                         val today = LocalDate.now()
-                        for (days in 100..1000 step 100) {
-                            val milestoneDate = anniversaryDate.plusDays(days.toLong())
-                            if (!milestoneDate.isBefore(today.minusDays(30))) {
+                        
+                        // 1. 백일 단위 기념일 (100일 ~ 3000일)
+                        for (days in 100..3000 step 100) {
+                            val milestoneDate = anniversaryDate.plusDays(days.toLong() - 1) // 당일 포함
+                            if (!milestoneDate.isBefore(today)) {
                                 scheduleRepository.addSchedule(
                                     com.ieum.domain.model.Schedule(
                                         id = 0,
@@ -120,6 +144,50 @@ class OnboardingViewModel @Inject constructor(
                                         colorHex = "#FFD700",
                                         isShared = true,
                                         description = "우리 함께한 지 ${days}일!"
+                                    )
+                                )
+                                
+                                scheduleRepository.addAnniversary(
+                                    com.ieum.domain.model.Anniversary(
+                                        id = 0L,
+                                        title = "${days}일",
+                                        emoji = "💕",
+                                        dDay = "",
+                                        date = milestoneDate
+                                    )
+                                )
+                            }
+                        }
+
+                        // 2. 년 단위 기념일 (1주년 ~ 10주년)
+                        for (years in 1..10) {
+                            val yearlyDate = try {
+                                anniversaryDate.plusYears(years.toLong())
+                            } catch (e: Exception) {
+                                // 2월 29일인 경우 처리
+                                anniversaryDate.plusYears(years.toLong()).minusDays(1)
+                            }
+                            
+                            if (!yearlyDate.isBefore(today)) {
+                                scheduleRepository.addSchedule(
+                                    com.ieum.domain.model.Schedule(
+                                        id = 0,
+                                        title = "${years}주년 기념일",
+                                        date = yearlyDate,
+                                        time = "",
+                                        colorHex = "#FF6B6B",
+                                        isShared = true,
+                                        description = "우리 벌써 ${years}년!"
+                                    )
+                                )
+                                
+                                scheduleRepository.addAnniversary(
+                                    com.ieum.domain.model.Anniversary(
+                                        id = 0L,
+                                        title = "${years}주년",
+                                        emoji = "✨",
+                                        dDay = "",
+                                        date = yearlyDate
                                     )
                                 )
                             }

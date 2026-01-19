@@ -18,22 +18,38 @@ import javax.inject.Inject
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val financeRepository: FinanceRepository,
-    private val getAnniversariesUseCase: GetAnniversariesUseCase
+    private val getAnniversariesUseCase: GetAnniversariesUseCase,
+    private val userRepository: com.ieum.domain.repository.UserRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
-        calculateDays()
+        observeUserData()
         loadEvents()
         observeFinanceData()
     }
 
+    private fun observeUserData() {
+        viewModelScope.launch {
+            userRepository.getCoupleInfo().collect { coupleInfo ->
+                val today = LocalDate.now()
+                val anniversaryDate = coupleInfo.startDate?.let {
+                    try { LocalDate.parse(it) } catch (e: Exception) { null }
+                } ?: LocalDate.now()
+                
+                val days = ChronoUnit.DAYS.between(anniversaryDate, today)
+                
+                _uiState.update { it.copy(
+                    daysTogether = days,
+                    partnerNames = "${coupleInfo.user.nickname} & ${coupleInfo.partner.nickname}"
+                ) }
+            }
+        }
+    }
+
     private fun calculateDays() {
-        val startDate = LocalDate.of(2024, 3, 1) // 예시 시작일
-        val today = LocalDate.now()
-        val days = ChronoUnit.DAYS.between(startDate, today)
-        _uiState.value = _uiState.value.copy(daysTogether = days)
+        // Obsolete, handled in observeUserData
     }
 
     private fun loadEvents() {

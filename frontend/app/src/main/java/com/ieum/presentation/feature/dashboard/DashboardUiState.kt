@@ -10,7 +10,7 @@ data class Anniversary(
 
 data class DashboardUiState(
     val daysTogether: Long = 0,
-    val partnerNames: String = "철수 & 영희",
+    val partnerNames: String = "우리",
     val spentAmount: Int = 350000,
     val totalBudget: Int = 500000,
     val upcomingEvents: List<Anniversary> = emptyList(),

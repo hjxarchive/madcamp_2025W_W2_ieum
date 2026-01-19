@@ -13,6 +13,7 @@ interface ScheduleRepository {
     fun getSchedulesForDate(date: LocalDate): Flow<List<Schedule>>
     fun getAnniversaries(): Flow<List<Anniversary>>
     suspend fun addSchedule(schedule: Schedule)
+    suspend fun addAnniversary(anniversary: Anniversary)
     suspend fun updateSchedule(schedule: Schedule)
     suspend fun deleteSchedule(scheduleId: Int)
 }

@@ -14,61 +14,8 @@ import javax.inject.Singleton
 @Singleton
 class ScheduleRepositoryImpl @Inject constructor() : ScheduleRepository {
 
-    private val schedules = MutableStateFlow(
-        listOf(
-            Schedule(
-                id = 101,
-                title = "영화 데이트",
-                date = LocalDate.now().plusDays(2),
-                time = "14:00",
-                colorHex = "#FF8FAB",
-                isShared = true,
-                description = "듄2 보기"
-            ),
-            Schedule(
-                id = 102,
-                title = "카페 투어",
-                date = LocalDate.now().plusDays(5),
-                time = "15:00",
-                colorHex = "#4ECDC4",
-                isShared = true
-            ),
-            Schedule(
-                id = 103,
-                title = "점심 약속",
-                date = LocalDate.now(),
-                time = "12:00",
-                colorHex = "#FF6B6B",
-                isShared = false
-            )
-        )
-    )
-
-    private val anniversaries = MutableStateFlow(
-        listOf(
-            Anniversary(
-                id = 1L,
-                title = "1000일",
-                emoji = "💕",
-                dDay = "D-89",
-                date = LocalDate.now().plusDays(89)
-            ),
-            Anniversary(
-                id = 2L,
-                title = "수현 생일",
-                emoji = "🎂",
-                dDay = "D-45",
-                date = LocalDate.now().plusDays(45)
-            ),
-            Anniversary(
-                id = 3L,
-                title = "처음 만난 날",
-                emoji = "✨",
-                dDay = "D+365",
-                date = LocalDate.now().minusDays(365)
-            )
-        )
-    )
+    private val schedules = MutableStateFlow<List<Schedule>>(emptyList())
+    private val anniversaries = MutableStateFlow<List<Anniversary>>(emptyList())
 
     override fun getSchedules(): Flow<List<Schedule>> = schedules
     override fun getSchedulesForMonth(yearMonth: YearMonth): Flow<List<Schedule>> =
@@ -87,6 +34,10 @@ class ScheduleRepositoryImpl @Inject constructor() : ScheduleRepository {
 
     override suspend fun addSchedule(schedule: Schedule) {
         schedules.value = schedules.value + schedule
+    }
+
+    override suspend fun addAnniversary(anniversary: Anniversary) {
+        anniversaries.value = anniversaries.value + anniversary
     }
 
     override suspend fun updateSchedule(schedule: Schedule) {
