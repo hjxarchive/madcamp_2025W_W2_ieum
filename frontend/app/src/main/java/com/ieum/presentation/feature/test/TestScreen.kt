@@ -213,37 +213,47 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
     val question = if (shuffledQuestions.isNotEmpty()) shuffledQuestions[currentIndex] else null
     var offsetX by remember { mutableStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(targetValue = offsetX)
+    
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val screenHeight = maxHeight
+        val screenWidth = maxWidth
+        
+        // 반응형 크기 계산
+        val topPadding = screenHeight * 0.05f
+        val cardHeight = screenHeight * 0.55f
+        val cardTopMargin = screenHeight * 0.08f
+        val horizontalPadding = screenWidth * 0.06f
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // 1. 프로그레스 바
-        LinearProgressIndicator(
-            progress = (currentIndex + 1) / 36f,
-            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-            color = btnColor,
-            trackColor = Color.White.copy(alpha = 0.3f)
-        )
-
-        // 2. 카드 상단 여백
-        Spacer(modifier = Modifier.height(70.dp))
-
-        Box(
-            modifier = Modifier.weight(1f),
-            contentAlignment = Alignment.TopCenter
+        Column(
+            modifier = Modifier.fillMaxSize().padding(horizontal = horizontalPadding),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            question?.let { q ->
-                // 3. 카드 전체 컨테이너
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(450.dp) // 높이 유지
-                        .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
-                        .graphicsLayer { rotationZ = animatedOffsetX * 0.05f }
-                        .pointerInput(currentIndex) {
+            Spacer(modifier = Modifier.height(topPadding))
+
+            // 1. 프로그레스 바
+            LinearProgressIndicator(
+                progress = (currentIndex + 1) / 36f,
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                color = btnColor,
+                trackColor = Color.White.copy(alpha = 0.3f)
+            )
+
+            // 2. 카드 상단 여백
+            Spacer(modifier = Modifier.height(cardTopMargin))
+
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                question?.let { q ->
+                    // 3. 카드 전체 컨테이너
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(cardHeight)
+                            .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
+                            .graphicsLayer { rotationZ = animatedOffsetX * 0.05f }
+                            .pointerInput(currentIndex) {
                             detectDragGestures(
                                 onDragEnd = {
                                     if (offsetX > 300) viewModel.submitAnswer(q.rightType)
@@ -270,9 +280,14 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                             .clip(RoundedCornerShape(32.dp)) // 카드 모서리 둥글게 깎기
                             .background(Color.Black.copy(alpha = 0.1f))
                     )
+                    
+                    val cardPadding = screenWidth * 0.08f
+                    val questionFontSize = (screenWidth.value * 0.055f).sp
+                    val categoryFontSize = (screenWidth.value * 0.035f).sp
+                    val counterFontSize = (screenWidth.value * 0.035f).sp
 
                     Column(
-                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                        modifier = Modifier.fillMaxSize().padding(cardPadding),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // 질문 번호와 뒤로가기 버튼을 같은 라인에 배치
@@ -303,7 +318,7 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                             Text(
                                 text = "${currentIndex + 1} / 36",
                                 color = textColor.copy(alpha = 0.6f),
-                                fontSize = 14.sp,
+                                fontSize = counterFontSize,
                                 fontWeight = FontWeight.Bold
                             )
                             
@@ -319,7 +334,7 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                                 text = q.category,
                                 color = textColor,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                fontSize = 14.sp
+                                fontSize = categoryFontSize
                             )
                         }
 
@@ -332,10 +347,10 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                             Text(
                                 text = q.text,
                                 color = textColor,
-                                fontSize = 24.sp,
+                                fontSize = questionFontSize,
                                 textAlign = TextAlign.Center,
                                 fontWeight = FontWeight.Bold,
-                                lineHeight = 34.sp
+                                lineHeight = questionFontSize * 1.4f
                             )
                         }
 
@@ -351,9 +366,9 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                                     viewModel.submitAnswer(q.leftType)
                                     offsetX = 0f
                                 },
-                                modifier = Modifier.size(60.dp)
+                                modifier = Modifier.size((screenWidth * 0.15f).coerceAtLeast(48.dp))
                             ) {
-                                Text("X", color = textColor, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                                Text("X", color = textColor, fontSize = (screenWidth.value * 0.08f).sp, fontWeight = FontWeight.ExtraBold)
                             }
 
                             // O 버튼 (오른쪽)
@@ -362,22 +377,23 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                                     viewModel.submitAnswer(q.rightType)
                                     offsetX = 0f
                                 },
-                                modifier = Modifier.size(60.dp)
+                                modifier = Modifier.size((screenWidth * 0.15f).coerceAtLeast(48.dp))
                             ) {
-                                Text("O", color = textColor, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
+                                Text("O", color = textColor, fontSize = (screenWidth.value * 0.08f).sp, fontWeight = FontWeight.ExtraBold)
                             }
                         }
                     }
+                    }
                 }
-            }
 
-            // 가장 하단 안내 텍스트
-            Text(
-                text = "좌우로 스와이프하여 선택하세요",
-                color = Color(0xFF5A3E2B).copy(alpha = 0.8f),
-                fontSize = 17.sp,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp)
-            )
+                // 가장 하단 안내 텍스트
+                Text(
+                    text = "좌우로 스와이프하여 선택하세요",
+                    color = Color(0xFF5A3E2B).copy(alpha = 0.8f),
+                    fontSize = (screenWidth.value * 0.04f).sp,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = screenHeight * 0.025f)
+                )
+            }
         }
     }
 }
