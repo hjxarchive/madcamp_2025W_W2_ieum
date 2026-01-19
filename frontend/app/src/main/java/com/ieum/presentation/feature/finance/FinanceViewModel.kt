@@ -52,9 +52,10 @@ class FinanceViewModel @Inject constructor(
         _currentMonth.value = _currentMonth.value.plusMonths(1)
     }
 
-    // Budget Planning State
-    private val _budget = MutableStateFlow(500000) // Default 500,000
-    val budget: StateFlow<Int> = _budget
+    // Budget State integrated with Repository
+    val budget: StateFlow<Int> = financeRepository.getBudget()
+        .map { it.monthlyBudget } // Fixed: Use monthlyBudget instead of amount
+        .stateIn(viewModelScope, SharingStarted.Lazily, 500000)
 
     private val _isAiSuggesting = MutableStateFlow(false)
     val isAiSuggesting: StateFlow<Boolean> = _isAiSuggesting
@@ -63,12 +64,13 @@ class FinanceViewModel @Inject constructor(
     val suggestedCategories: StateFlow<Map<String, Int>> = _suggestedCategories
 
     init {
-        // Load initial budget if desired, or just start with default
-        // If we had a getBudget() in repo, we'd call it here.
+        // Budget is automatically loaded via the StateFlow
     }
 
     fun setBudget(amount: Int) {
-        _budget.value = amount
+        viewModelScope.launch {
+            financeRepository.setBudget(amount)
+        }
     }
 
     fun confirmBudgetAndSuggest() {
@@ -77,7 +79,7 @@ class FinanceViewModel @Inject constructor(
             // Simulate AI delay
             kotlinx.coroutines.delay(1500)
             
-            val total = _budget.value
+            val total = budget.value // Fixed: Use budget.value
             // Mock Suggestion Logic
             val suggestion = mapOf(
                 "식비" to (total * 0.4).toInt(),

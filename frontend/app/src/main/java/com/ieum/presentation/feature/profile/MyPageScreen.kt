@@ -1,6 +1,7 @@
 package com.ieum.presentation.feature.profile
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -22,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ieum.domain.model.ChemistryData
 import com.ieum.presentation.theme.IeumColors
+import com.ieum.R
 
 // Requested global color
 val MainBrown = Color(0xFF5A3E2B)
@@ -54,13 +58,22 @@ fun MyPageScreen(
         },
         containerColor = IeumColors.Background
     ) { paddingValues ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp)
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.background2),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 24.dp)
+            ) {
             Spacer(modifier = Modifier.height(20.dp))
 
             // 1. Couple Profile Section
@@ -85,6 +98,7 @@ fun MyPageScreen(
             SettingsSection()
 
             Spacer(modifier = Modifier.height(50.dp))
+            }
         }
     }
 }

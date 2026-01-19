@@ -32,13 +32,31 @@ class TestViewModel @Inject constructor(
 
     fun submitAnswer(type: Char) {
         Log.d("TestViewModel", "Q${currentQuestionIndex.value + 1}: 선택된 타입 = $type")
-        val newList = _answers.value + Answer(currentQuestionIndex.value, type)
+        
+        // 현재 질문 인덱스에 대한 기존 답변이 있는지 확인
+        val existingAnswerIndex = _answers.value.indexOfFirst { it.questionIndex == currentQuestionIndex.value }
+        
+        val newList = if (existingAnswerIndex != -1) {
+            // 기존 답변 수정
+            _answers.value.toMutableList().apply {
+                set(existingAnswerIndex, Answer(currentQuestionIndex.value, type))
+            }
+        } else {
+            // 새 답변 추가
+            _answers.value + Answer(currentQuestionIndex.value, type)
+        }
         _answers.value = newList
 
         if (currentQuestionIndex.value < 35) { // 총 36개 질문
             currentQuestionIndex.value += 1
         } else {
             calculateFinalResult(newList)
+        }
+    }
+    
+    fun goToPreviousQuestion() {
+        if (currentQuestionIndex.value > 0) {
+            currentQuestionIndex.value -= 1
         }
     }
 

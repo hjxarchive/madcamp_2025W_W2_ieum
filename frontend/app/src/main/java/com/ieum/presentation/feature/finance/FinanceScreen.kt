@@ -44,7 +44,8 @@ fun FinanceScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showBudgetDialog by remember { mutableStateOf(false) }
-    var currentBudget by remember { mutableIntStateOf(50000) }
+    
+    val currentBudget by viewModel.budget.collectAsStateWithLifecycle()
     
     val scrollState = rememberScrollState()
     
@@ -84,7 +85,7 @@ fun FinanceScreen(
             currentBudget = currentBudget,
             onDismiss = { showBudgetDialog = false },
             onConfirm = { newBudget ->
-                currentBudget = newBudget
+                viewModel.setBudget(newBudget)
                 showBudgetDialog = false
             }
         )
@@ -667,67 +668,121 @@ private fun BudgetSettingDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    var budgetText by remember { mutableStateOf(currentBudget.toString()) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "이번 달 예산을 정해볼까요?",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.SemiBold
-                )
-            )
-        },
-        text = {
-            Column {
+    // 500,000원 -> 500000 etc.
+    // Slider value range: 0 ~ 2,000,000 (example)
+    var sliderValue by remember { mutableFloatStateOf(currentBudget.toFloat()) }
+    val numberFormat = NumberFormat.getNumberInstance(Locale.KOREA)
+
+    val mainBrown = Color(0xFF5A3E2B)
+    val lightBrown = Color(0xFFE6C8A0)
+    val sliderTrackColor = mainBrown.copy(alpha = 0.3f) // "이거보다 조금 연한 색"
+
+    // Full Screen Dialog style using Surface overlay
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = IeumColors.Background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            // Top Bar area
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.Black
+                    )
+                }
+                
                 Text(
-                    text = "월간 데이트 비용 한도를 설정하세요",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = IeumColors.TextSecondary
+                    text = "이 달의 예산",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = mainBrown,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(60.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "이번 달 예산을 정해볼까요?",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = mainBrown
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(40.dp))
+
+                Text(
+                    text = "${numberFormat.format(sliderValue.toInt())}원",
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    fontSize = 32.sp,
+                    color = mainBrown // Fixed: requested color 0xFF5A3E2B
+                )
                 
-                OutlinedTextField(
-                    value = budgetText,
-                    onValueChange = { budgetText = it.filter { c -> c.isDigit() } },
-                    label = { Text("예산 금액") },
-                    suffix = { Text("원") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = IeumColors.Primary,
-                        focusedLabelColor = IeumColors.Primary
+                Spacer(modifier = Modifier.height(30.dp))
+                
+                // Custom Slider
+                // Note: Material3 Slider defaults. modifying colors.
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    valueRange = 0f..2000000f, // 0 to 2 million won range
+                    steps = 19, // steps of 100,000 won
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = mainBrown, // Changed from pink to brown
+                        activeTrackColor = sliderTrackColor.copy(alpha=0.6f), 
+                        inactiveTrackColor = sliderTrackColor.copy(alpha = 0.2f),
+                        activeTickColor = Color.Transparent,
+                        inactiveTickColor = Color.Transparent
                     )
                 )
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // Confirm Button
+                Button(
+                    onClick = { onConfirm(sliderValue.toInt()) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .padding(horizontal = 16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = lightBrown // 0xFFE6C8A0
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text(
+                        text = "확정하기",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White // or MainBrown? Screenshot looks like White text on Peach button.
+                    )
+                }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = { 
-                    budgetText.toIntOrNull()?.let { onConfirm(it) }
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = IeumColors.Primary
-                )
-            ) {
-                Text("확인하기")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = "취소",
-                    color = IeumColors.TextSecondary
-                )
-            }
-        },
-        containerColor = Color.White,
-        shape = RoundedCornerShape(24.dp)
-    )
+        }
+    }
 }
+
 
 // 데이터 클래스들
 data class ExpenseCategory(
