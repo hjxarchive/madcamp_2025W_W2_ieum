@@ -9,5 +9,6 @@ interface UserRepository {
     fun getPartner(): Flow<User>
     fun getCoupleInfo(): Flow<CoupleInfo>
     suspend fun updateUserProfile(user: User)
+    suspend fun saveUserProfile(user: User)
     suspend fun updatePartnerNickname(nickname: String)
 }

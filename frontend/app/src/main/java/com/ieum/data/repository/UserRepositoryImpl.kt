@@ -42,6 +42,10 @@ class UserRepositoryImpl @Inject constructor() : UserRepository {
         // TODO: Implement when backend is ready
     }
 
+    override suspend fun saveUserProfile(user: User) {
+        // TODO: Implement actual saving (e.g., DataStore or Backend)
+    }
+
     override suspend fun updatePartnerNickname(nickname: String) {
         // TODO: Implement when backend is ready
     }

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navigation
 import com.ieum.presentation.feature.login.LoginScreen
 import com.ieum.presentation.theme.IeumColors
 
@@ -51,19 +52,78 @@ fun MainNavigation() {
         composable(Routes.MBTI_TEST) {
             com.ieum.presentation.feature.test.TestMainScreen(
                 onTestFinished = {
-                    // 테스트 종료 시 코드 연결 화면으로 이동
-                    navController.navigate("connection_screen") {
+                    // 테스트 종료 시 온보딩 화면으로 이동
+                    navController.navigate(Routes.ONBOARDING_NICKNAME) {
                         popUpTo(Routes.MBTI_TEST) { inclusive = true }
                     }
                 }
             )
         }
+        
+        // 온보딩 기능 (중첩 그래프)
+        navigation(
+            startDestination = Routes.ONBOARDING_NICKNAME,
+            route = Routes.ONBOARDING
+        ) {
+            // 온보딩 1단계: 닉네임 입력
+            composable(Routes.ONBOARDING_NICKNAME) { backStackEntry ->
+                // 온보딩 플로우 전체에서 공유할 ViewModel
+                val onboardingBackStackEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(Routes.ONBOARDING)
+                }
+                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel = 
+                    androidx.hilt.navigation.compose.hiltViewModel(onboardingBackStackEntry)
+                
+                com.ieum.presentation.feature.onboarding.NicknameInputScreen(
+                    viewModel = onboardingViewModel,
+                    onNext = {
+                        navController.navigate(Routes.ONBOARDING_BIRTHDAY)
+                    }
+                )
+            }
+            
+            // 온보딩 2단계: 생일 입력
+            composable(Routes.ONBOARDING_BIRTHDAY) { backStackEntry ->
+                // 온보딩 플로우 전체에서 공유할 ViewModel
+                val onboardingBackStackEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(Routes.ONBOARDING)
+                }
+                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel = 
+                    androidx.hilt.navigation.compose.hiltViewModel(onboardingBackStackEntry)
+                
+                com.ieum.presentation.feature.onboarding.BirthdayInputScreen(
+                    viewModel = onboardingViewModel,
+                    onNext = {
+                        navController.navigate(Routes.ONBOARDING_ANNIVERSARY)
+                    }
+                )
+            }
+            
+            // 온보딩 3단계: 기념일 입력
+            composable(Routes.ONBOARDING_ANNIVERSARY) { backStackEntry ->
+                // 온보딩 플로우 전체에서 공유할 ViewModel
+                val onboardingBackStackEntry = remember(backStackEntry) {
+                    navController.getBackStackEntry(Routes.ONBOARDING)
+                }
+                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel = 
+                    androidx.hilt.navigation.compose.hiltViewModel(onboardingBackStackEntry)
+                
+                com.ieum.presentation.feature.onboarding.AnniversaryInputScreen(
+                    viewModel = onboardingViewModel,
+                    onNext = {
+                        navController.navigate(Routes.CODE_CONNECTION) {
+                            popUpTo(Routes.ONBOARDING) { inclusive = true }
+                        }
+                    }
+                )
+            }
+        }
 
-        composable("connection_screen") {
+        composable(Routes.CODE_CONNECTION) {
             com.ieum.presentation.feature.connection.CodeConnectionScreen(
                 onNavigateToMain = {
                     navController.navigate(Routes.MAIN) {
-                        popUpTo("connection_screen") { inclusive = true }
+                        popUpTo(Routes.CODE_CONNECTION) { inclusive = true }
                     }
                 }
             )
