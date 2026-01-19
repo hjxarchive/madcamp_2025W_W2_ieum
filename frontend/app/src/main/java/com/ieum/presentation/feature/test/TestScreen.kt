@@ -349,22 +349,22 @@ fun ResultContent(
 ) {
     // 1. MBTI별 결과 데이터 매칭 (이미지 리소스 포함)
     val resultData = when (mbti) {
-        "MDEP" -> ResultInfo("똑똑한 꼬마 탐험가", "알뜰살뜰 모은 돈으로 새로운 곳을 정복하고, 서운함은 바로 풀고 다시 웃는 씩씩이들!", R.drawable.mdep_b)
-        "MDEF" -> ResultInfo("실속 만점 동네 대장", "가성비 넘치는 새로운 맛집을 찾아 떠나며, 즉흥적인 데이트 속에서도 시원시원하게 소통해요.", R.drawable.mdef_b)
-        "MDCP" -> ResultInfo("든든한 울타리 설계자", "우리만의 익숙한 아지트와 예산을 딱 지키며, 서로 오해 없게 바로바로 말해주는 듬직이들!", R.drawable.mdcp_b)
-        "MDCF" -> ResultInfo("포근한 소풍 메이커", "\"어디든 좋아!\" 하며 익숙한 곳에서 힐링하고, 지갑도 마음도 편안하게 유지하는 커플이에요.", R.drawable.mdcf_b)
-        "MTEP" -> ResultInfo("수줍은 꿈의 기획자", "새로운 도전을 꼼꼼히 준비하지만, 싸우면 잠시 숨을 고르고 예쁜 말만 골라 전해주는 섬세함!", R.drawable.mtep_b)
-        "MTEF" -> ResultInfo("말랑말랑 여행 작가", "발길 닿는 대로 새로운 세상을 구경하되, 서로의 마음이 다치지 않게 천천히 다가가는 다정함.", R.drawable.mtef_b)
-        "MTCP" -> ResultInfo("포근포근 안심 지킴이", "계획된 루틴과 익숙한 장소에서 평화를 느끼며, 갈등 앞에서도 차분하게 서로를 기다려줘요.", R.drawable.mtcp_b)
-        "MTCF" -> ResultInfo("소박한 행복 수집가", "큰 지출 없이도 익숙한 골목길 데이트를 사랑하며, 속 깊은 대화로 서로를 따뜻하게 안아줘요.", R.drawable.mtcf_b)
-        "IDEP" -> ResultInfo("눈부신 이벤트 왕자/공주", "아낌없는 지출과 완벽한 계획으로 매번 역대급 데이트를 만들고, 열정적으로 사랑을 표현해요!", R.drawable.idep_b)
-        "IDEF" -> ResultInfo("통통 튀는 낭만 방랑자", "\"오늘 완전 즐겁게 놀자!\" 하며 새로운 것에 팍팍 투자하고, 솔직한 감정을 마구마구 공유해요.", R.drawable.idef_b)
-        "IDCP" -> ResultInfo("스윗한 홈 데이트 장인", "우리가 좋아하는 익숙한 장소를 위해 정성을 쏟고 투자하며, 분명한 표현으로 신뢰를 쌓아요.", R.drawable.idcp_b)
-        "IDCF" -> ResultInfo("꿀 떨어지는 자유 영혼", "기분 내고 싶은 날엔 화끈하게! 즉흥적인 데이트를 즐기며 서로의 기분을 바로바로 챙겨줘요.", R.drawable.idcf_b)
-        "ITEP" -> ResultInfo("사색하는 낭만 탐험가", "특별한 경험을 위해 정성껏 투자하고 준비하지만, 싸우면 마음을 정리할 시간이 필요해요.", R.drawable.itep_b)
-        "ITEF" -> ResultInfo("포실포실 감성 여행자", "과감하게 새로운 자극을 찾아 떠나는 모험가이면서도, 서로의 속마음은 아주 조심스럽게 살펴요.", R.drawable.itef_b)
-        "ITCP" -> ResultInfo("단단한 설렘의 건축가", "우리 관계에 듬뿍 투자하며 안정적인 계획을 세우고, 늘 신중하고 성숙한 태도로 사랑을 지켜요.", R.drawable.itcp_b)
-        "ITCF" -> ResultInfo("구름 위의 솜사탕 커플", "돈보다 소중한 추억을 위해 아낌없이 쓰며, 편안한 곳에서 서로를 배려하며 느긋하게 즐겨요.", R.drawable.itcf_b)
+        "MDEP" -> ResultInfo("똑똑한 꼬마 탐험가", "알뜰살뜰 모은 돈으로 새로운 곳을 정복하고, 서운함은 바로 풀고 다시 웃는 씩씩이들!", R.drawable.mdep_r)
+        "MDEF" -> ResultInfo("실속 만점 동네 대장", "가성비 넘치는 새로운 맛집을 찾아 떠나며, 즉흥적인 데이트 속에서도 시원시원하게 소통해요.", R.drawable.mdef_r)
+        "MDCP" -> ResultInfo("든든한 울타리 설계자", "우리만의 익숙한 아지트와 예산을 딱 지키며, 서로 오해 없게 바로바로 말해주는 듬직이들!", R.drawable.mdcp_r)
+        "MDCF" -> ResultInfo("포근한 소풍 메이커", "\"어디든 좋아!\" 하며 익숙한 곳에서 힐링하고, 지갑도 마음도 편안하게 유지하는 커플이에요.", R.drawable.mdcf_r)
+        "MTEP" -> ResultInfo("수줍은 꿈의 기획자", "새로운 도전을 꼼꼼히 준비하지만, 싸우면 잠시 숨을 고르고 예쁜 말만 골라 전해주는 섬세함!", R.drawable.mtep_r)
+        "MTEF" -> ResultInfo("말랑말랑 여행 작가", "발길 닿는 대로 새로운 세상을 구경하되, 서로의 마음이 다치지 않게 천천히 다가가는 다정함.", R.drawable.mtef_r)
+        "MTCP" -> ResultInfo("포근포근 안심 지킴이", "계획된 루틴과 익숙한 장소에서 평화를 느끼며, 갈등 앞에서도 차분하게 서로를 기다려줘요.", R.drawable.mtcp_r)
+        "MTCF" -> ResultInfo("소박한 행복 수집가", "큰 지출 없이도 익숙한 골목길 데이트를 사랑하며, 속 깊은 대화로 서로를 따뜻하게 안아줘요.", R.drawable.mtcf_r)
+        "IDEP" -> ResultInfo("눈부신 이벤트 왕자/공주", "아낌없는 지출과 완벽한 계획으로 매번 역대급 데이트를 만들고, 열정적으로 사랑을 표현해요!", R.drawable.idep_r)
+        "IDEF" -> ResultInfo("통통 튀는 낭만 방랑자", "\"오늘 완전 즐겁게 놀자!\" 하며 새로운 것에 팍팍 투자하고, 솔직한 감정을 마구마구 공유해요.", R.drawable.idef_r)
+        "IDCP" -> ResultInfo("스윗한 홈 데이트 장인", "우리가 좋아하는 익숙한 장소를 위해 정성을 쏟고 투자하며, 분명한 표현으로 신뢰를 쌓아요.", R.drawable.idcp_r)
+        "IDCF" -> ResultInfo("꿀 떨어지는 자유 영혼", "기분 내고 싶은 날엔 화끈하게! 즉흥적인 데이트를 즐기며 서로의 기분을 바로바로 챙겨줘요.", R.drawable.idcf_r)
+        "ITEP" -> ResultInfo("사색하는 낭만 탐험가", "특별한 경험을 위해 정성껏 투자하고 준비하지만, 싸우면 마음을 정리할 시간이 필요해요.", R.drawable.itep_r)
+        "ITEF" -> ResultInfo("포실포실 감성 여행자", "과감하게 새로운 자극을 찾아 떠나는 모험가이면서도, 서로의 속마음은 아주 조심스럽게 살펴요.", R.drawable.itef_r)
+        "ITCP" -> ResultInfo("단단한 설렘의 건축가", "우리 관계에 듬뿍 투자하며 안정적인 계획을 세우고, 늘 신중하고 성숙한 태도로 사랑을 지켜요.", R.drawable.itcp_r)
+        "ITCF" -> ResultInfo("구름 위의 솜사탕 커플", "돈보다 소중한 추억을 위해 아낌없이 쓰며, 편안한 곳에서 서로를 배려하며 느긋하게 즐겨요.", R.drawable.itcf_r)
         else -> ResultInfo("신비로운 커플", "우리만의 독특한 사랑의 방식을 가진 커플입니다.", R.drawable.background2) // 기본 이미지
     }
 
@@ -432,9 +432,9 @@ fun ResultContent(
             onClick = onNavigateMain,
             colors = ButtonDefaults.buttonColors(containerColor = btnColor, contentColor = textColor),
             shape = RoundedCornerShape(50.dp),
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            modifier = Modifier.fillMaxWidth().height(40.dp)
         ) {
-            Text("메인 화면으로 이동하기", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text("다음 화면", fontSize = 17.sp, fontWeight = FontWeight.Bold)
         }
 
         Spacer(modifier = Modifier.height(40.dp))
