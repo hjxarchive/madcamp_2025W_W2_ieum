@@ -77,5 +77,12 @@ class DashboardViewModel @Inject constructor(
                 _uiState.update { it.copy(spentAmount = monthlySpent) }
             }
         }
+        
+        // Budget 관찰 추가
+        viewModelScope.launch {
+            financeRepository.getBudget().collect { budget ->
+                _uiState.update { it.copy(totalBudget = budget.monthlyBudget) }
+            }
+        }
     }
 }

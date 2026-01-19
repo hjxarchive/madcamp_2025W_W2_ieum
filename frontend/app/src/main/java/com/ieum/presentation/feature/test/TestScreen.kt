@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +30,7 @@ import com.ieum.R
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 
 // 질문 데이터 모델
@@ -272,13 +275,41 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                         modifier = Modifier.fillMaxSize().padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // 질문 번호 (예: 1 / 36)
-                        Text(
-                            text = "${currentIndex + 1} / 36",
-                            color = textColor.copy(alpha = 0.6f),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        // 질문 번호와 뒤로가기 버튼을 같은 라인에 배치
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 뒤로가기 버튼 (왼쪽)
+                            if (currentIndex > 0) {
+                                IconButton(
+                                    onClick = { viewModel.goToPreviousQuestion() },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowBack,
+                                        contentDescription = "이전 질문",
+                                        tint = textColor.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            } else {
+                                // 첫 번째 질문일 때 공간 유지
+                                Spacer(modifier = Modifier.size(24.dp))
+                            }
+                            
+                            // 질문 번호 (중앙)
+                            Text(
+                                text = "${currentIndex + 1} / 36",
+                                color = textColor.copy(alpha = 0.6f),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            // 오른쪽 공간 유지 (대칭)
+                            Spacer(modifier = Modifier.size(24.dp))
+                        }
 
                         Spacer(modifier = Modifier.height(20.dp))
 
@@ -314,14 +345,26 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("X", color = textColor.copy(alpha = 0.7f), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                            // X 버튼 (왼쪽)
+                            IconButton(
+                                onClick = { 
+                                    viewModel.submitAnswer(q.leftType)
+                                    offsetX = 0f
+                                },
+                                modifier = Modifier.size(60.dp)
+                            ) {
+                                Text("X", color = textColor, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
                             }
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("O", color = textColor.copy(alpha = 0.7f), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
-                                Spacer(modifier = Modifier.width(6.dp))
+                            // O 버튼 (오른쪽)
+                            IconButton(
+                                onClick = { 
+                                    viewModel.submitAnswer(q.rightType)
+                                    offsetX = 0f
+                                },
+                                modifier = Modifier.size(60.dp)
+                            ) {
+                                Text("O", color = textColor, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold)
                             }
                         }
                     }

@@ -1,5 +1,6 @@
 package com.ieum.presentation.feature.finance
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -27,6 +30,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ieum.domain.model.Expense
 import com.ieum.presentation.theme.IeumColors
+import com.ieum.R
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -70,12 +74,21 @@ fun ConsumptionScreen(
         },
         containerColor = IeumColors.Background
     ) { paddingValues ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.background2),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             // Month Navigation
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -104,56 +117,58 @@ fun ConsumptionScreen(
 
             // Expense List
             ExpenseList(expenses)
+            }
         }
     }
 }
 
 @Composable
 private fun ConsumptionSummaryCard(totalAmount: Int, expenses: List<Expense>) {
-    Card(
+    // Removed Card wrapper - no white background
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        Text(
+            text = "총 지출액",
+            style = MaterialTheme.typography.titleMedium,
+            color = MainBrown
+        )
+        Text(
+            text = "${String.format("%,d", totalAmount)}원",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = MainBrown
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Pie Chart - Centered
+        Box(
+            modifier = Modifier
+                .size(220.dp)
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "총 지출액",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.Gray
-            )
-            Text(
-                text = "${String.format("%,d", totalAmount)}원",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                color = MainBrown
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Pie Chart
-            Box(
-                modifier = Modifier
-                    .size(220.dp) // Adjusted size for better donut look
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if(expenses.isNotEmpty()) {
-                    DonutChart(expenses)
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .border(4.dp, Color.LightGray.copy(alpha=0.3f), CircleShape)
-                    )
-                    Text("지출 내역 없음", color = Color.Gray)
-                }
+            if(expenses.isNotEmpty()) {
+                DonutChart(expenses)
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .border(4.dp, Color.LightGray.copy(alpha=0.3f), CircleShape)
+                )
+                Text("지출 내역 없음", color = MainBrown)
             }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Category Legend
+        if(expenses.isNotEmpty()) {
+            CategoryLegend(expenses)
         }
     }
 }
@@ -192,6 +207,54 @@ private fun DonutChart(expenses: List<Expense>) {
     }
 }
 
+
+@Composable
+private fun CategoryLegend(expenses: List<Expense>) {
+    val categoryTotals = expenses.groupBy { it.category }
+        .mapValues { it.value.sumOf { e -> e.amount } }
+    val total = categoryTotals.values.sum().toFloat()
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        categoryTotals.entries.sortedByDescending { it.value }.forEach { entry ->
+            val percentage = if (total > 0) (entry.value / total * 100).toInt() else 0
+            val colorHex = entry.key.colorHex
+            val color = try {
+                Color(android.graphics.Color.parseColor(colorHex))
+            } catch (e: Exception) { Color.Gray }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .background(color, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = entry.key.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MainBrown
+                    )
+                }
+                Text(
+                    text = "$percentage%",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MainBrown
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun ExpenseList(expenses: List<Expense>) {

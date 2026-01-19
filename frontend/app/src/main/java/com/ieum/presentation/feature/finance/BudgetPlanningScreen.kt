@@ -1,12 +1,14 @@
 package com.ieum.presentation.feature.finance
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -14,13 +16,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ieum.presentation.theme.IeumColors
+import com.ieum.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,13 +38,18 @@ fun BudgetPlanningScreen(
     val budget by viewModel.budget.collectAsStateWithLifecycle()
     val isAiSuggesting by viewModel.isAiSuggesting.collectAsStateWithLifecycle()
     val suggestedCategories by viewModel.suggestedCategories.collectAsStateWithLifecycle()
+    
+    var isEditing by remember { mutableStateOf(false) }
+    var editedCategories by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+    var showWarning by remember { mutableStateOf(false) }
+    var warningMessage by remember { mutableStateOf("") }
 
     val scrollState = rememberScrollState()
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("이 달의 예산", fontWeight = FontWeight.Bold) },
+                title = { Text("이 달의 예산", fontWeight = FontWeight.Bold, color = Color(0xFF5A3E2B)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -51,21 +62,30 @@ fun BudgetPlanningScreen(
         },
         containerColor = IeumColors.Background
     ) { paddingValues ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(scrollState)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Background Image
+            Image(
+                painter = painterResource(id = R.drawable.background2),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+            
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(scrollState)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
                 "이번 달 예산을 정해볼까요?",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = IeumColors.TextPrimary
+                color = Color(0xFF5A3E2B) // Changed to brown
             )
             
             Spacer(modifier = Modifier.height(40.dp))
@@ -75,7 +95,7 @@ fun BudgetPlanningScreen(
                 text = "${String.format("%,d", budget)}원",
                 style = MaterialTheme.typography.displayMedium,
                 fontWeight = FontWeight.Bold,
-                color = IeumColors.Primary
+                color = Color(0xFF5A3E2B) // Changed to brown
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -86,9 +106,9 @@ fun BudgetPlanningScreen(
                 valueRange = 100000f..3000000f,
                 steps = 28, // (300-10)/10 = 29 steps roughly
                 colors = SliderDefaults.colors(
-                    thumbColor = IeumColors.Primary,
-                    activeTrackColor = IeumColors.Primary,
-                    inactiveTrackColor = IeumColors.Primary.copy(alpha=0.3f)
+                    thumbColor = Color(0xFF5A3E2B), // Changed to brown
+                    activeTrackColor = Color(0xFF5A3E2B).copy(alpha = 0.6f), // Changed to brown
+                    inactiveTrackColor = Color(0xFF5A3E2B).copy(alpha=0.2f) // Changed to lighter brown
                 )
             )
 
@@ -101,7 +121,7 @@ fun BudgetPlanningScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = IeumColors.Primary)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE6C8A0)) // Changed to beige
             ) {
                 if (isAiSuggesting) {
                     CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
@@ -134,11 +154,31 @@ fun BudgetPlanningScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(category, fontWeight = FontWeight.Medium)
-                            Text(
-                                "${String.format("%,d", amount)}원", 
-                                fontWeight = FontWeight.Bold, 
-                                color = IeumColors.TextPrimary
-                            )
+                            
+                            if (isEditing) {
+                                // 편집 모드: TextField
+                                OutlinedTextField(
+                                    value = editedCategories[category]?.toString() ?: amount.toString(),
+                                    onValueChange = { newValue ->
+                                        val intValue = newValue.filter { it.isDigit() }.toIntOrNull() ?: 0
+                                        editedCategories = editedCategories + (category to intValue)
+                                    },
+                                    modifier = Modifier.width(150.dp),
+                                    suffix = { Text("원") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            } else {
+                                // 보기 모드: 텍스트
+                                Text(
+                                    "${String.format("%,d", editedCategories[category] ?: amount)}원", 
+                                    fontWeight = FontWeight.Bold, 
+                                    color = IeumColors.TextPrimary
+                                )
+                            }
                         }
                         HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
                     }
@@ -146,15 +186,58 @@ fun BudgetPlanningScreen(
                     Spacer(modifier = Modifier.height(24.dp))
                     
                     OutlinedButton(
-                        onClick = { /* TODO: Navigate to detail tuning */ },
+                        onClick = {
+                            if (isEditing) {
+                                // 저장하기 로직
+                                val currentCategories = if (editedCategories.isEmpty()) suggestedCategories else editedCategories
+                                val total = currentCategories.values.sum()
+                                
+                                when {
+                                    total > budget -> {
+                                        warningMessage = "예산보다 ${String.format("%,d", total - budget)}원 많습니다."
+                                        showWarning = true
+                                    }
+                                    total < budget -> {
+                                        warningMessage = "예산보다 ${String.format("%,d", budget - total)}원 적습니다."
+                                        showWarning = true
+                                    }
+                                    else -> {
+                                        // 저장 성공
+                                        isEditing = false
+                                        showWarning = false
+                                    }
+                                }
+                            } else {
+                                // 세부 조정하기 로직
+                                if (editedCategories.isEmpty()) {
+                                    editedCategories = suggestedCategories.toMap()
+                                }
+                                isEditing = true
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
                         shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, IeumColors.Primary)
+                        border = BorderStroke(1.dp, Color(0xFF5A3E2B))
                     ) {
-                        Text("세부 조정하기", color = IeumColors.Primary)
+                        Text(
+                            if (isEditing) "저장하기" else "세부 조정하기", 
+                            color = Color(0xFF5A3E2B)
+                        )
                     }
+                    
+                    // 경고 메시지
+                    if (showWarning) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = warningMessage,
+                            color = Color.Red,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
                 }
             }
         }
