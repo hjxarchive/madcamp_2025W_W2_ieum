@@ -98,12 +98,12 @@ fun TestMainScreen(
     val buttonBeige = Color(0xFFE6C8A0)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(id = R.drawable.background2),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+//        Image(
+//            // painter = painterResource(id = R.drawable.background2),
+//            contentDescription = null,
+//            modifier = Modifier.fillMaxSize(),
+//            contentScale = ContentScale.Crop
+//        )
 
         when (val state = screenState) {
             is TestScreenState.Intro -> IntroContent(mainBrown, buttonBeige) { viewModel.startTest() }
@@ -424,7 +424,7 @@ fun ResultContent(
         "ITEF" -> ResultInfo("포실포실 감성 여행자", "과감하게 새로운 자극을 찾아 떠나는 모험가이면서도, 서로의 속마음은 아주 조심스럽게 살펴요.", R.drawable.itef_r)
         "ITCP" -> ResultInfo("단단한 설렘의 건축가", "우리 관계에 듬뿍 투자하며 안정적인 계획을 세우고, 늘 신중하고 성숙한 태도로 사랑을 지켜요.", R.drawable.itcp_r)
         "ITCF" -> ResultInfo("구름 위의 솜사탕 커플", "돈보다 소중한 추억을 위해 아낌없이 쓰며, 편안한 곳에서 서로를 배려하며 느긋하게 즐겨요.", R.drawable.itcf_r)
-        else -> ResultInfo("신비로운 커플", "우리만의 독특한 사랑의 방식을 가진 커플입니다.", R.drawable.background2) // 기본 이미지
+        else -> ResultInfo("신비로운 커플", "우리만의 독특한 사랑의 방식을 가진 커플입니다.", R.drawable.dog) // 기본 이미지
     }
 
     Column(

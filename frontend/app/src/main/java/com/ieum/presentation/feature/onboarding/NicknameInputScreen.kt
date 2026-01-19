@@ -42,12 +42,12 @@ fun NicknameInputScreen(
         
         Box(modifier = Modifier.fillMaxSize()) {
             // 배경
-            Image(
-                painter = painterResource(id = R.drawable.background2),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
+//            Image(
+//                // painter = painterResource(id = R.drawable.background2),
+//                contentDescription = null,
+//                modifier = Modifier.fillMaxSize(),
+//                contentScale = ContentScale.Crop
+//            )
             
             Column(
                 modifier = Modifier

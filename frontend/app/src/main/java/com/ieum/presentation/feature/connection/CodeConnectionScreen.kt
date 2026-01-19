@@ -79,12 +79,12 @@ fun CodeConnectionScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         // 배경 설정
-        Image(
-            painter = painterResource(id = R.drawable.background2),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.FillBounds
-        )
+//        Image(
+//            // painter = painterResource(id = R.drawable.background2),
+//            contentDescription = null,
+//            modifier = Modifier.fillMaxSize(),
+//            contentScale = ContentScale.FillBounds
+//        )
 
         Column(
             modifier = Modifier

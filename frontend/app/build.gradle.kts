@@ -101,4 +101,18 @@ dependencies {
 
     // DataStore (토큰 저장용 - SharedPreferences 대신 권장)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Google Maps
+    implementation("com.google.android.gms:play-services-maps:19.0.0")
+    implementation("com.google.maps.android:maps-compose:4.3.3")
+    implementation("com.google.maps.android:android-maps-utils:3.8.0")
+
+    // Glide (Image Loading)
+    implementation("com.github.bumptech.glide:compose:1.0.0-beta01")
+
+    // ExifInterface
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // Accompanist Permissions
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 }
