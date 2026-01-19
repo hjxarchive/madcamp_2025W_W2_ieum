@@ -1,5 +1,6 @@
 package com.ieum.presentation.feature.login
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ieum.domain.repository.AuthRepository
@@ -18,17 +19,61 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginState())
     val uiState: StateFlow<LoginState> = _uiState
 
-    fun loginWithGoogleAccount(email: String, displayName: String?, onSuccess: () -> Unit) {
+    /**
+     * Google ID Token으로 백엔드 서버에 로그인
+     */
+    fun loginWithGoogleIdToken(idToken: String, onSuccess: () -> Unit) {
         if (_uiState.value.isLoading) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // Google 계정 정보로 로그인 처리
-            android.util.Log.d("LoginViewModel", "Google 로그인: $email, $displayName")
+            try {
+                Log.d("GoogleLogin", "1. ID Token 받음: ${idToken.take(50)}...")
+                Log.d("GoogleLogin", "2. 서버 요청 시작...")
 
-            _uiState.update { it.copy(isLoading = false) }
-            onSuccess()
+                val result = authRepository.googleLogin(idToken)
+
+                result.fold(
+                    onSuccess = { authResponse ->
+                        Log.d("GoogleLogin", "3. 서버 응답 성공!")
+                        Log.d("GoogleLogin", "   - accessToken: ${authResponse.accessToken.take(30)}...")
+                        Log.d("GoogleLogin", "   - user email: ${authResponse.user.email}")
+                        Log.d("GoogleLogin", "   - user id: ${authResponse.user.id}")
+
+                        // 토큰 저장
+                        authRepository.saveToken(authResponse.accessToken)
+                        Log.d("GoogleLogin", "4. 토큰 저장 완료")
+
+                        _uiState.update { it.copy(isLoading = false) }
+                        onSuccess()
+                    },
+                    onFailure = { error ->
+                        Log.e("GoogleLogin", "3. 서버 응답 실패!", error)
+                        Log.e("GoogleLogin", "   - 에러 타입: ${error.javaClass.simpleName}")
+                        Log.e("GoogleLogin", "   - 에러 메시지: ${error.message}")
+                        error.cause?.let {
+                            Log.e("GoogleLogin", "   - 원인: ${it.message}")
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "서버 로그인 실패: ${error.message}"
+                            )
+                        }
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("GoogleLogin", "예외 발생!", e)
+                Log.e("GoogleLogin", "   - 예외 타입: ${e.javaClass.simpleName}")
+                Log.e("GoogleLogin", "   - 예외 메시지: ${e.message}")
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "예외 발생: ${e.message}"
+                    )
+                }
+            }
         }
     }
 
