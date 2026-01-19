@@ -132,7 +132,8 @@ fun MainNavigation() {
         composable(Routes.MAIN) {
             MainScreen(
                 onNavigateToMyPage = { navController.navigate(Routes.MY_PAGE) },
-                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) }
+                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) },
+                onNavigateToClicker = { navController.navigate(Routes.CLICKER_GAME) }
             )
         }
 
@@ -153,6 +154,12 @@ fun MainNavigation() {
         composable(Routes.BUDGET_PLANNING) {
             com.ieum.presentation.feature.finance.BudgetPlanningScreen(
                 onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.CLICKER_GAME) {
+            com.ieum.presentation.feature.dashboard.ClickerGameScreen(
+                onBack = { navController.popBackStack() }
             )
         }
     }
@@ -188,7 +195,8 @@ val bottomNavItems = listOf(
 fun MainScreen(
     modifier: Modifier = Modifier,
     onNavigateToMyPage: () -> Unit,
-    onNavigateToBudgetPlanning: () -> Unit
+    onNavigateToBudgetPlanning: () -> Unit,
+    onNavigateToClicker: () -> Unit
 ) {
     // 대시보드가 기본 (index 3 - Calendar=0, Map=1, Chat=2, Dashboard=3)
     var selectedItem by remember { mutableIntStateOf(3) }
@@ -228,7 +236,8 @@ fun MainScreen(
                     BottomNavItem.Dashboard -> DashboardContent(
                         onNavigateToCalendar = { selectedItem = 0 },
                         onNavigateToMyPage = onNavigateToMyPage,
-                        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning
+                        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
+                        onNavigateToClicker = onNavigateToClicker
                     )
                 }
             }
@@ -296,11 +305,13 @@ private fun ChatContent(onBack: () -> Unit, onNavigateToBudgetPlanning: () -> Un
 private fun DashboardContent(
     onNavigateToCalendar: () -> Unit,
     onNavigateToMyPage: () -> Unit,
-    onNavigateToBudgetPlanning: () -> Unit
+    onNavigateToBudgetPlanning: () -> Unit,
+    onNavigateToClicker: () -> Unit
 ) {
     com.ieum.presentation.feature.dashboard.DashboardScreen(
         onNavigateToCalendar = onNavigateToCalendar,
         onNavigateToProfile = onNavigateToMyPage,
-        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning
+        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
+        onNavigateToClicker = onNavigateToClicker
     )
 }

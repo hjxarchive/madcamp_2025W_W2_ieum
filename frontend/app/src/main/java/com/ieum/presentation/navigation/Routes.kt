@@ -13,4 +13,5 @@ object Routes {
     const val ONBOARDING_BIRTHDAY = "onboarding_birthday"
     const val ONBOARDING_ANNIVERSARY = "onboarding_anniversary"
     const val CODE_CONNECTION = "code_connection"
+    const val CLICKER_GAME = "clicker_game"
 }

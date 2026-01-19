@@ -8,6 +8,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.PunchClock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,16 +28,35 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onNavigateToCalendar: () -> Unit,
-    onNavigateToProfile: () -> Unit,
-    onNavigateToBudgetPlanning: () -> Unit
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToBudgetPlanning: () -> Unit = {},
+    onNavigateToClicker: () -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    DashboardContent(
+        uiState = uiState,
+        onNavigateToCalendar = onNavigateToCalendar,
+        onNavigateToProfile = onNavigateToProfile,
+        onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
+        onNavigateToClicker = onNavigateToClicker
+    )
+}
+
+@Composable
+fun DashboardContent(
+    uiState: DashboardUiState,
+    onNavigateToCalendar: () -> Unit,
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToBudgetPlanning: () -> Unit = {},
+    onNavigateToClicker: () -> Unit = {}
+) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 배경 이미지 설정
         Image(
@@ -59,15 +81,17 @@ fun DashboardScreen(
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF5A3E2B)
                 )
-                IconButton(
-                    onClick = onNavigateToProfile,
-                    modifier = Modifier.size(45.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Profile",
-                        tint = uiState.mainTextColor,
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onNavigateToProfile,
+                        modifier = Modifier.size(45.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Profile",
+                            tint = uiState.mainTextColor,
+                        )
+                    }
                 }
             }
 
@@ -134,8 +158,8 @@ fun DashboardScreen(
                         MenuButton("궁합", Icons.Default.Favorite, uiState, onClick = {
                             /* 클릭 시 동작: 예) println("궁합 클릭") */
                         })
-                        MenuButton("위시리스트", Icons.Default.CardGiftcard, uiState, onClick = {
-                            /* 클릭 시 동작 */
+                        MenuButton("클리커", Icons.Default.PunchClock, uiState, onClick = {
+                            onNavigateToClicker()
                         })
                         MenuButton("추억", Icons.Default.Image, uiState, onClick = {
                             /* 클릭 시 동작 */

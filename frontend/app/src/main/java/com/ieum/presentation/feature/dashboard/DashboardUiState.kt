@@ -11,7 +11,7 @@ data class Anniversary(
 data class DashboardUiState(
     val daysTogether: Long = 0,
     val partnerNames: String = "우리",
-    val spentAmount: Int = 350000,
+    val spentAmount: Int = 0,
     val totalBudget: Int = 500000,
     val upcomingEvents: List<Anniversary> = emptyList(),
     val mainTextColor: Color = Color(0xFF5A3E2B),

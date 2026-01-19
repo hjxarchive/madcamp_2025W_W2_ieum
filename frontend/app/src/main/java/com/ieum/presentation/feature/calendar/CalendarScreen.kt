@@ -288,7 +288,7 @@ fun ExpenseCard(
         ) {
             Column {
                 Text(
-                    text = "💸 ${expense.category.name}",
+                    text = "${expense.category.name}",
                     color = Color(0xFF8D7B68),
                     fontSize = 12.sp
                 )
@@ -301,7 +301,7 @@ fun ExpenseCard(
             Text(
                 text = "${expense.amount}원",
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFE57373),
+                color = Color(0xFF5A3E2B),
                 fontSize = 16.sp
             )
         }

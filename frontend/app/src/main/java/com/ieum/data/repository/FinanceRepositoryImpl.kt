@@ -53,15 +53,9 @@ class FinanceRepositoryImpl @Inject constructor(
             // ID 카운터 복구 (가장 큰 ID + 1)
             idCounter = loadedList.maxOfOrNull { it.id.toLongOrNull() ?: 100L } ?: 100L
         } else {
-             // 없으면 기본 더미 데이터 (첫 실행 시에만)
-             val defaultData = listOf(
-                Expense("101", "점심 식사", ExpenseCategory.FOOD, 12000, "2026.01.15"),
-                Expense("102", "카페 라떼", ExpenseCategory.CAFE, 5500, "2026.01.14"),
-                Expense("103", "맥주", ExpenseCategory.DRINK, 8000, "2026.01.13"),
-                Expense("104", "영화 관람", ExpenseCategory.CULTURE, 15000, "2026.01.12")
-            )
-            expenses.value = defaultData
-            saveExpenses(defaultData)
+             // 없으면 빈 리스트로 시작
+             expenses.value = emptyList()
+             saveExpenses(emptyList())
         }
     }
 
@@ -91,8 +85,8 @@ class FinanceRepositoryImpl @Inject constructor(
 
     override fun getMonthlySpending(): Flow<List<MonthlySpending>> = MutableStateFlow(
         listOf(
-            MonthlySpending("1월", 45000),
-            MonthlySpending("2월", 32000),
+            MonthlySpending("1월", 0),
+            MonthlySpending("2월", 0),
             MonthlySpending("3월", 0),
             MonthlySpending("4월", 0),
             MonthlySpending("5월", 0),
