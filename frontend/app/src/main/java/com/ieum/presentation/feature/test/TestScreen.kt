@@ -22,7 +22,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
-import androidx.lifecycle.viewmodel.compose.viewModel
+import android.util.Log
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.ieum.R
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -86,7 +87,7 @@ val allQuestions = listOf(
 
 @Composable
 fun TestMainScreen(
-    viewModel: TestViewModel = viewModel(),
+    viewModel: TestViewModel = hiltViewModel(),
     onTestFinished: () -> Unit = {}
 ) {
     val screenState by viewModel.currentScreen.collectAsState()
@@ -209,6 +210,14 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
     var offsetX by remember { mutableStateOf(0f) }
     val animatedOffsetX by animateFloatAsState(targetValue = offsetX)
 
+    // 디버깅 로그
+    LaunchedEffect(currentIndex) {
+        Log.d("TestScreen", "allQuestions.size = ${allQuestions.size}, currentIndex = $currentIndex")
+        question?.let {
+            Log.d("TestScreen", "Q${currentIndex + 1}: category=${it.category}, leftType=${it.leftType}, rightType=${it.rightType}")
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -238,7 +247,7 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                         .height(450.dp) // 높이 유지
                         .offset { IntOffset(animatedOffsetX.roundToInt(), 0) }
                         .graphicsLayer { rotationZ = animatedOffsetX * 0.05f }
-                        .pointerInput(Unit) {
+                        .pointerInput(currentIndex) {
                             detectDragGestures(
                                 onDragEnd = {
                                     if (offsetX > 300) viewModel.submitAnswer(q.rightType)
@@ -442,38 +451,39 @@ fun ResultContent(
 // 성향 수치화를 위한 게이지 바 컴포저블
 @Composable
 fun GaugeBar(label: String, s1: Int, s2: Int, t1: String, t2: String, color: Color) {
-    // 카테고리당 전체 질문 수는 9개입니다.
-    // 왼쪽 타입(t1)이 선택된 비율을 계산합니다.
-    val totalQuestions = 9f
-    val progress = s1 / totalQuestions
-
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(t1, color = Color(0xFF5A3E2B), fontWeight = FontWeight.Bold, fontSize = 19.sp)
+            Text("$t1 $s1", color = Color(0xFF5A3E2B), fontWeight = FontWeight.Bold, fontSize = 17.sp)
             Text(label, color = Color(0xFF5A3E2B).copy(alpha = 0.6f), fontSize = 15.sp)
-            Text(t2, color = Color(0xFF5A3E2B), fontWeight = FontWeight.Bold, fontSize = 19.sp)
+            Text("$s2 $t2", color = Color(0xFF5A3E2B), fontWeight = FontWeight.Bold, fontSize = 17.sp)
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 게이지 바 배경
-        Box(
+        // 게이지 바 - 양쪽 성향 모두 표시
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(12.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.Gray.copy(alpha = 0.2f))
         ) {
-            // 실제 데이터 비중만큼 차오르는 바
+            // 왼쪽 성향 (s1) 바
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress) // s1의 비중만큼 왼쪽에서부터 채워짐
+                    .weight(s1.coerceAtLeast(1).toFloat())
                     .fillMaxHeight()
                     .background(Color(0xFFE6C8A0))
+            )
+            // 오른쪽 성향 (s2) 바
+            Box(
+                modifier = Modifier
+                    .weight(s2.coerceAtLeast(1).toFloat())
+                    .fillMaxHeight()
+                    .background(Color(0xFFD4A574))
             )
         }
     }

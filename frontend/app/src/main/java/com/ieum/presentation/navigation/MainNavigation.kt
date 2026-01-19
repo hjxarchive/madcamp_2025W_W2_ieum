@@ -39,56 +39,25 @@ fun MainNavigation() {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    navController.navigate("connection_screen") {
+                    // 로그인 성공 시 MBTI 테스트로 이동
+                    navController.navigate(Routes.MBTI_TEST) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
             )
         }
 
-        /*composable(Routes.LOGIN) {
-
-    LoginScreen(
-
-        onLoginSuccess = {
-
-            // 로그인 성공 시 MBTI 테스트로 이동
-
-            navController.navigate(Routes.MBTI_TEST) {
-
-                popUpTo(Routes.LOGIN) { inclusive = true }
-
-            }
-
+        // MBTI 테스트 화면
+        composable(Routes.MBTI_TEST) {
+            com.ieum.presentation.feature.test.TestMainScreen(
+                onTestFinished = {
+                    // 테스트 종료 시 코드 연결 화면으로 이동
+                    navController.navigate("connection_screen") {
+                        popUpTo(Routes.MBTI_TEST) { inclusive = true }
+                    }
+                }
+            )
         }
-
-    )
-
-}
-
-
-
-// 2. MBTI 테스트 화면
-
-composable(Routes.MBTI_TEST) {
-
-    com.ieum.presentation.feature.test.TestMainScreen(
-
-        onTestFinished = {
-
-            // 테스트 종료 시 코드 연결 화면으로 이동
-
-            navController.navigate("connection_screen") {
-
-                popUpTo(Routes.MBTI_TEST) { inclusive = true }
-
-            }
-
-        }
-
-    )
-
-}*/
 
         composable("connection_screen") {
             com.ieum.presentation.feature.connection.CodeConnectionScreen(

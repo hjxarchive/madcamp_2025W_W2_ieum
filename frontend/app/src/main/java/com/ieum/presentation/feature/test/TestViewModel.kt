@@ -1,5 +1,6 @@
 package com.ieum.presentation.feature.test
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ieum.domain.repository.TestRepository
@@ -26,6 +27,7 @@ class TestViewModel @Inject constructor(
     }
 
     fun submitAnswer(type: Char) {
+        Log.d("TestViewModel", "Q${currentQuestionIndex.value + 1}: 선택된 타입 = $type")
         val newList = _answers.value + Answer(currentQuestionIndex.value, type)
         _answers.value = newList
 
@@ -43,6 +45,7 @@ class TestViewModel @Inject constructor(
 
     private fun calculateFinalResult(finalAnswers: List<Answer>) {
         val counts = finalAnswers.groupBy { it.answerType }.mapValues { it.value.size }
+        Log.d("TestViewModel", "최종 카운트: $counts")
 
         val mbti = StringBuilder().apply {
             append(if ((counts['M'] ?: 0) >= (counts['I'] ?: 0)) "M" else "I")
@@ -57,6 +60,7 @@ class TestViewModel @Inject constructor(
             'E' to (counts['E'] ?: 0), 'C' to (counts['C'] ?: 0),
             'P' to (counts['P'] ?: 0), 'F' to (counts['F'] ?: 0)
         )
+        Log.d("TestViewModel", "MBTI: $mbti, scoreMap: $scoreMap")
         
         viewModelScope.launch {
             testRepository.saveMbtiResult(mbti)
