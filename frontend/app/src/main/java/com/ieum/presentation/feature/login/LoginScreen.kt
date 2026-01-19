@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,14 +29,16 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val webClientId = stringResource(R.string.default_web_client_id)
 
-    // Google Sign-In 설정
-    val gso = remember {
+    // Google Sign-In 설정 (ID Token 요청 포함)
+    val gso = remember(webClientId) {
         GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(webClientId)  // 백엔드 검증을 위한 ID Token 요청
             .requestEmail()
             .build()
     }
-    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+    val googleSignInClient = remember(gso) { GoogleSignIn.getClient(context, gso) }
 
     // ActivityResultLauncher로 Google 로그인 결과 처리
     val launcher = rememberLauncherForActivityResult(
@@ -44,14 +47,14 @@ fun LoginScreen(
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             val account = task.getResult(ApiException::class.java)
-            android.util.Log.d("LoginScreen", "Google 로그인 성공: ${account.email}")
+            val idToken = account.idToken
+            android.util.Log.d("LoginScreen", "Google 로그인 성공: ${account.email}, idToken: ${idToken?.take(20)}...")
 
-            // Google 계정 정보로 로그인 처리
-            val email = account.email
-            if (email != null) {
-                viewModel.loginWithGoogleAccount(email, account.displayName, onLoginSuccess)
+            if (idToken != null) {
+                // ID Token으로 백엔드 로그인 처리
+                viewModel.loginWithGoogleIdToken(idToken, onLoginSuccess)
             } else {
-                viewModel.setError("Google 로그인 실패: 이메일을 받지 못했습니다")
+                viewModel.setError("Google 로그인 실패: ID Token을 받지 못했습니다")
             }
         } catch (e: ApiException) {
             // 에러 코드 참고: https://developers.google.com/android/reference/com/google/android/gms/common/api/CommonStatusCodes
