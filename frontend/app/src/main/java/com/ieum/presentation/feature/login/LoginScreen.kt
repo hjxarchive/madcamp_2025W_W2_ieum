@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,11 +26,19 @@ import com.ieum.R
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    onAlreadyLoggedIn: () -> Unit = onLoginSuccess,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val webClientId = stringResource(R.string.default_web_client_id)
+
+    // 이미 로그인된 상태면 자동 이동
+    LaunchedEffect(uiState.isLoggedIn) {
+        if (uiState.isLoggedIn && !uiState.isLoading) {
+            onAlreadyLoggedIn()
+        }
+    }
 
     // Google Sign-In 설정 (ID Token 요청 포함)
     val gso = remember(webClientId) {

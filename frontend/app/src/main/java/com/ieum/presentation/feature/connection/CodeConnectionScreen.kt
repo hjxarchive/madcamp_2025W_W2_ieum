@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,12 +33,19 @@ import com.ieum.R
 
 @Composable
 fun CodeConnectionScreen(
-    viewModel: ConnectionViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+    viewModel: ConnectionViewModel = androidx.hilt.navigation.compose.hiltViewModel(),
     onNavigateToMain: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
+
+    // 연결 성공 시 자동 이동
+    LaunchedEffect(uiState.isConnected) {
+        if (uiState.isConnected && !uiState.showSuccessModal) {
+            onNavigateToMain()
+        }
+    }
 
     // 화면 크기 가져오기
     val configuration = LocalConfiguration.current
@@ -134,14 +142,22 @@ fun CodeConnectionScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = uiState.myCode,
-                            fontSize = codeFontSize,
-                            letterSpacing = 4.sp,
-                            textAlign = TextAlign.Center,
-                            color = Color(0xFF5A3E2B),
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (uiState.isLoadingMyCode) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color(0xFF5A3E2B),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = uiState.myCode.ifEmpty { "------" },
+                                fontSize = codeFontSize,
+                                letterSpacing = 4.sp,
+                                textAlign = TextAlign.Center,
+                                color = Color(0xFF5A3E2B),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         Box(
                             modifier = Modifier
                                 .width(if (isSmallScreen) 140.dp else 160.dp)
@@ -152,15 +168,18 @@ fun CodeConnectionScreen(
 
                     IconButton(
                         onClick = {
-                            clipboardManager.setText(AnnotatedString(uiState.myCode))
-                            viewModel.setCopied(true)
+                            if (uiState.myCode.isNotEmpty()) {
+                                clipboardManager.setText(AnnotatedString(uiState.myCode))
+                                viewModel.setCopied(true)
+                            }
                         },
+                        enabled = uiState.myCode.isNotEmpty() && !uiState.isLoadingMyCode,
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         Icon(
                             imageVector = if (uiState.isCopied) Icons.Default.Done else Icons.Default.ContentCopy,
                             contentDescription = "Copy",
-                            tint = Color(0xFF5A3E2B),
+                            tint = if (uiState.myCode.isNotEmpty()) Color(0xFF5A3E2B) else Color(0xFF5A3E2B).copy(alpha = 0.3f),
                             modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
                         )
                     }
@@ -229,17 +248,35 @@ fun CodeConnectionScreen(
 
                     Spacer(Modifier.height(if (isSmallScreen) 16.dp else 24.dp))
 
-                    Text(
-                        text = "초대장 보내기",
-                        fontSize = if (isSmallScreen) 16.sp else 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (uiState.partnerCode.length == 6) Color(0xFF5A3E2B) else Color(0xFF5A3E2B).copy(alpha = 0.4f),
-                        modifier = Modifier
-                            .clickable(enabled = uiState.partnerCode.length == 6) {
-                                viewModel.sendInvitation()
-                            }
-                            .padding(8.dp)
-                    )
+                    // 에러 메시지 표시
+                    if (uiState.errorMessage != null) {
+                        Text(
+                            text = uiState.errorMessage ?: "",
+                            fontSize = 12.sp,
+                            color = Color(0xFFE57373),
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+
+                    if (uiState.isConnecting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color(0xFF5A3E2B),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "연결하기",
+                            fontSize = if (isSmallScreen) 16.sp else 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (uiState.partnerCode.length == 6) Color(0xFF5A3E2B) else Color(0xFF5A3E2B).copy(alpha = 0.4f),
+                            modifier = Modifier
+                                .clickable(enabled = uiState.partnerCode.length == 6 && !uiState.isConnecting) {
+                                    viewModel.joinCouple()
+                                }
+                                .padding(8.dp)
+                        )
+                    }
                 }
             }
 
@@ -256,6 +293,17 @@ fun CodeConnectionScreen(
                 onNavigateToMain()
             },
             onReject = { viewModel.handleInvitation(false) }
+        )
+    }
+
+    // 6. 연결 성공 모달
+    if (uiState.showSuccessModal) {
+        SuccessConnectionModal(
+            partnerNickname = uiState.partnerNickname,
+            onDismiss = {
+                viewModel.dismissSuccessModal()
+                onNavigateToMain()
+            }
         )
     }
 }
@@ -298,6 +346,57 @@ fun InvitationModal(onAccept: () -> Unit, onReject: () -> Unit) {
                     ) {
                         Text("수락", color = Color(0xFF5A3E2B))
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SuccessConnectionModal(
+    partnerNickname: String?,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "💕",
+                    fontSize = 64.sp
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "연결 성공!",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF5A3E2B)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (partnerNickname != null) {
+                        "${partnerNickname}님과 연결되었습니다"
+                    } else {
+                        "파트너와 연결되었습니다"
+                    },
+                    fontSize = 16.sp,
+                    color = Color(0xFF5A3E2B).copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE6C8A0))
+                ) {
+                    Text("시작하기", color = Color(0xFF5A3E2B), fontWeight = FontWeight.Bold)
                 }
             }
         }

@@ -40,8 +40,14 @@ fun MainNavigation() {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // 로그인 성공 시 MBTI 테스트로 이동
+                    // 신규 로그인 성공 시 MBTI 테스트로 이동
                     navController.navigate(Routes.MBTI_TEST) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                },
+                onAlreadyLoggedIn = {
+                    // 이미 로그인된 사용자는 메인 화면으로 바로 이동
+                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
@@ -141,7 +147,13 @@ fun MainNavigation() {
             com.ieum.presentation.feature.profile.MyPageScreen(
                 onBackClick = { navController.popBackStack() },
                 onNavigateToConsumption = { navController.navigate(Routes.CONSUMPTION) },
-                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) }
+                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) },
+                onLogout = {
+                    // 로그아웃 시 로그인 화면으로 이동 (모든 백스택 제거)
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 

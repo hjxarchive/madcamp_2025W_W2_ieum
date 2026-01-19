@@ -19,6 +19,53 @@ class LoginViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LoginState())
     val uiState: StateFlow<LoginState> = _uiState
 
+    init {
+        checkLoginStatus()
+    }
+
+    /**
+     * 앱 시작 시 저장된 토큰으로 로그인 상태 확인
+     */
+    private fun checkLoginStatus() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            try {
+                val token = authRepository.getToken()
+                if (token != null) {
+                    // 토큰이 있으면 서버에서 사용자 정보 확인
+                    val result = authRepository.getMe()
+                    result.fold(
+                        onSuccess = { user ->
+                            Log.d("AutoLogin", "자동 로그인 성공: ${user.email}")
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isLoggedIn = true,
+                                    isNewUser = user.nickname == null
+                                )
+                            }
+                        },
+                        onFailure = { error ->
+                            Log.e("AutoLogin", "토큰 만료 또는 무효: ${error.message}")
+                            // 토큰이 유효하지 않으면 삭제
+                            authRepository.clearToken()
+                            _uiState.update {
+                                it.copy(isLoading = false, isLoggedIn = false)
+                            }
+                        }
+                    )
+                } else {
+                    Log.d("AutoLogin", "저장된 토큰 없음")
+                    _uiState.update { it.copy(isLoading = false, isLoggedIn = false) }
+                }
+            } catch (e: Exception) {
+                Log.e("AutoLogin", "로그인 상태 확인 실패", e)
+                _uiState.update { it.copy(isLoading = false, isLoggedIn = false) }
+            }
+        }
+    }
+
     /**
      * Google ID Token으로 백엔드 서버에 로그인
      */
@@ -41,11 +88,17 @@ class LoginViewModel @Inject constructor(
                         Log.d("GoogleLogin", "   - user email: ${authResponse.user.email}")
                         Log.d("GoogleLogin", "   - user id: ${authResponse.user.id}")
 
-                        // 토큰 저장
+                        // 토큰 및 사용자 ID 저장
                         authRepository.saveToken(authResponse.accessToken)
-                        Log.d("GoogleLogin", "4. 토큰 저장 완료")
+                        authRepository.saveUserId(authResponse.user.id)
+                        Log.d("GoogleLogin", "4. 토큰 및 사용자 ID 저장 완료")
 
-                        _uiState.update { it.copy(isLoading = false) }
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isNewUser = authResponse.user.nickname == null
+                            )
+                        }
                         onSuccess()
                     },
                     onFailure = { error ->

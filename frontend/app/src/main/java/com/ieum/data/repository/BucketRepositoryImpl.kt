@@ -1,97 +1,161 @@
 package com.ieum.data.repository
 
-import android.content.Context
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import android.util.Log
+import com.ieum.data.api.BucketService
+import com.ieum.data.dto.BucketRequest
+import com.ieum.data.dto.BucketUpdateRequest
 import com.ieum.domain.model.BucketCategory
 import com.ieum.domain.model.BucketItem
 import com.ieum.domain.repository.BucketRepository
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.bucketDataStore by preferencesDataStore(name = "bucket_prefs")
-
 @Singleton
 class BucketRepositoryImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    private val bucketService: BucketService
 ) : BucketRepository {
 
-    private val gson = Gson()
-    private val BUCKET_ITEMS_KEY = stringPreferencesKey("bucket_items")
+    private val bucketItems = MutableStateFlow<List<BucketItem>>(emptyList())
+    private val bucketIdMap = mutableMapOf<Long, String>() // local id -> server id
+    private var localIdCounter = 100L
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    private val _bucketItems = MutableStateFlow<List<BucketItem>>(emptyList())
+    // Note: refreshBuckets() is called when user navigates to bucket screen
+    // Not in init to avoid calling API before login
 
-    init {
-        // 앱 시작 시 데이터 로드
-        loadData()
-    }
+    private fun refreshBuckets() {
+        coroutineScope.launch {
+            try {
+                val response = bucketService.getBuckets()
+                val items = response.buckets.map { dto ->
+                    val localId = dto.id.hashCode().toLong()
+                    bucketIdMap[localId] = dto.id
 
-    private fun loadData() {
-        // Flow를 통해 지속적으로 동기화하거나, 단순 초기 로드 후 memory update 하는 방식
-        // 여기서는 memory flow와 DataStore를 연동하여 reactive하게 처리
-        context.bucketDataStore.data
-            .map { prefs ->
-                val json = prefs[BUCKET_ITEMS_KEY]
-                if (json != null) {
-                    val type = object : TypeToken<List<BucketItem>>() {}.type
-                    gson.fromJson<List<BucketItem>>(json, type) ?: emptyList()
-                } else {
-                    emptyList()
+                    BucketItem(
+                        id = localId,
+                        title = dto.title,
+                        category = mapCategoryFromServer(dto.category),
+                        isCompleted = dto.isCompleted,
+                        createdAt = dto.createdAt.substring(0, 10),
+                        completedAt = dto.completedAt?.substring(0, 10)
+                    )
                 }
+                bucketItems.value = items
+                Log.d("BucketRepository", "Loaded ${items.size} bucket items from API")
+            } catch (e: Exception) {
+                Log.e("BucketRepository", "Failed to load buckets", e)
             }
-            .onEach { items ->
-                _bucketItems.value = items
-            }
-            .launchIn(kotlinx.coroutines.GlobalScope) // 간단하게 처리 (Hilt Singleton이므로 수명 주기 일치)
+        }
     }
 
-    override fun getBucketItems(): Flow<List<BucketItem>> = _bucketItems
+    private fun mapCategoryFromServer(category: String?): BucketCategory {
+        return when (category?.lowercase()) {
+            "여행", "travel" -> BucketCategory.TRAVEL
+            "맛집", "food" -> BucketCategory.FOOD
+            "문화", "culture" -> BucketCategory.CULTURE
+            "액티비티", "activity" -> BucketCategory.ACTIVITY
+            "특별한날", "special" -> BucketCategory.SPECIAL
+            else -> BucketCategory.SPECIAL
+        }
+    }
+
+    private fun mapCategoryToServer(category: BucketCategory): String {
+        return category.label
+    }
+
+    override fun getBucketItems(): Flow<List<BucketItem>> = bucketItems
 
     override fun getCompletedCount(): Flow<Int> =
-        _bucketItems.map { list -> list.count { it.isCompleted } }
+        bucketItems.map { list -> list.count { it.isCompleted } }
 
     override suspend fun addBucketItem(title: String, category: BucketCategory) {
-        val currentList = _bucketItems.value
-        val maxId = currentList.maxOfOrNull { it.id } ?: 0L
-        val newItem = BucketItem(
-            id = maxId + 1,
-            title = title,
-            category = category,
-            isCompleted = false,
-            createdAt = java.time.LocalDate.now().toString()
-        )
-        saveList(currentList + newItem)
+        try {
+            val request = BucketRequest(
+                title = title,
+                description = null,
+                category = mapCategoryToServer(category)
+            )
+            val response = bucketService.createBucket(request)
+            Log.d("BucketRepository", "Created bucket: ${response.id}")
+
+            refreshBuckets()
+        } catch (e: Exception) {
+            Log.e("BucketRepository", "Failed to add bucket", e)
+            // Fallback to local
+            val newItem = BucketItem(
+                id = ++localIdCounter,
+                title = title,
+                category = category,
+                isCompleted = false,
+                createdAt = java.time.LocalDate.now().toString()
+            )
+            bucketItems.value = bucketItems.value + newItem
+        }
     }
 
     override suspend fun toggleComplete(itemId: Long) {
-        val newList = _bucketItems.value.map { item ->
-            if (item.id == itemId) {
-                item.copy(
-                    isCompleted = !item.isCompleted,
-                    completedAt = if (!item.isCompleted) java.time.LocalDate.now().toString() else null
+        try {
+            val serverId = bucketIdMap[itemId]
+            val currentItem = bucketItems.value.find { it.id == itemId }
+
+            if (serverId != null && currentItem != null) {
+                val request = BucketUpdateRequest(
+                    isCompleted = !currentItem.isCompleted,
+                    completedImage = null
                 )
+                bucketService.updateBucket(serverId, request)
+                Log.d("BucketRepository", "Toggled bucket: $serverId")
+
+                refreshBuckets()
             } else {
-                item
+                // Local toggle
+                bucketItems.value = bucketItems.value.map { item ->
+                    if (item.id == itemId) {
+                        item.copy(
+                            isCompleted = !item.isCompleted,
+                            completedAt = if (!item.isCompleted) java.time.LocalDate.now().toString() else null
+                        )
+                    } else {
+                        item
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("BucketRepository", "Failed to toggle bucket", e)
+            bucketItems.value = bucketItems.value.map { item ->
+                if (item.id == itemId) {
+                    item.copy(
+                        isCompleted = !item.isCompleted,
+                        completedAt = if (!item.isCompleted) java.time.LocalDate.now().toString() else null
+                    )
+                } else {
+                    item
+                }
             }
         }
-        saveList(newList)
     }
 
     override suspend fun deleteBucketItem(itemId: Long) {
-        val newList = _bucketItems.value.filter { it.id != itemId }
-        saveList(newList)
-    }
+        try {
+            val serverId = bucketIdMap[itemId]
+            if (serverId != null) {
+                bucketService.deleteBucket(serverId)
+                Log.d("BucketRepository", "Deleted bucket: $serverId")
+                bucketIdMap.remove(itemId)
 
-    private suspend fun saveList(list: List<BucketItem>) {
-        val json = gson.toJson(list)
-        context.bucketDataStore.edit { prefs ->
-            prefs[BUCKET_ITEMS_KEY] = json
+                refreshBuckets()
+            } else {
+                bucketItems.value = bucketItems.value.filter { it.id != itemId }
+            }
+        } catch (e: Exception) {
+            Log.e("BucketRepository", "Failed to delete bucket", e)
+            bucketItems.value = bucketItems.value.filter { it.id != itemId }
         }
-        // _bucketItems는 loadData()의 Flow에 의해 자동 갱신됨
     }
 }

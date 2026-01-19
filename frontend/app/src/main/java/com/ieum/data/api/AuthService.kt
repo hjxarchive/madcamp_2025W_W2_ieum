@@ -1,29 +1,15 @@
 package com.ieum.data.api
 
-import retrofit2.http.Body
-import retrofit2.http.POST
+import com.ieum.data.dto.*
+import retrofit2.http.*
 
 interface AuthService {
     @POST("api/auth/google")
     suspend fun googleLogin(@Body request: GoogleLoginRequest): AuthResponse
+
+    @POST("api/auth/logout")
+    suspend fun logout(): MessageResponse
+
+    @GET("api/auth/me")
+    suspend fun getMe(): UserDto
 }
-
-data class GoogleLoginRequest(val idToken: String)
-
-data class AuthResponse(
-    val accessToken: String,
-    val user: User
-)
-
-data class User(
-    val id: String,
-    val email: String,
-    val name: String?,
-    val nickname: String?,
-    val profileImage: String?,
-    val birthday: String?,
-    val gender: String?,
-    val coupleId: String?,
-    val mbtiType: String?,
-    val isActive: Boolean
-)

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,10 +38,20 @@ fun MyPageScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
     onBackClick: () -> Unit = {},
     onNavigateToConsumption: () -> Unit = {},
-    onNavigateToBudgetPlanning: () -> Unit = {}
+    onNavigateToBudgetPlanning: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val logoutEvent by viewModel.logoutEvent.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
+
+    // 로그아웃 이벤트 처리
+    LaunchedEffect(logoutEvent) {
+        if (logoutEvent) {
+            viewModel.resetLogoutEvent()
+            onLogout()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -95,7 +106,7 @@ fun MyPageScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // 4. Settings Section (New)
-            SettingsSection()
+            SettingsSection(onLogoutClick = { viewModel.logout() })
 
             Spacer(modifier = Modifier.height(50.dp))
             }
@@ -311,7 +322,7 @@ private fun FinanceSectionList(
 }
 
 @Composable
-private fun SettingsSection() {
+private fun SettingsSection(onLogoutClick: () -> Unit = {}) {
     Text(
         text = "설정",
         style = MaterialTheme.typography.titleLarge,
@@ -332,7 +343,14 @@ private fun SettingsSection() {
             SettingsItem(title = "알림 설정", icon = Icons.Outlined.Notifications, onClick = {}, showDivider = true)
             SettingsItem(title = "개인정보 설정", icon = Icons.Outlined.Lock, onClick = {}, showDivider = true)
             SettingsItem(title = "고객센터", icon = Icons.Outlined.Help, onClick = {}, showDivider = true)
-            SettingsItem(title = "앱 정보", icon = Icons.Outlined.Info, onClick = {}, showDivider = false)
+            SettingsItem(title = "앱 정보", icon = Icons.Outlined.Info, onClick = {}, showDivider = true)
+            SettingsItem(
+                title = "로그아웃",
+                icon = Icons.Outlined.Logout,
+                onClick = onLogoutClick,
+                showDivider = false,
+                tintColor = Color(0xFFE57373)
+            )
         }
     }
 }
@@ -342,7 +360,8 @@ private fun SettingsItem(
     title: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    showDivider: Boolean
+    showDivider: Boolean,
+    tintColor: Color = Color.Gray
 ) {
     Column {
         Row(
@@ -355,7 +374,7 @@ private fun SettingsItem(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color.Gray,
+                tint = tintColor,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -363,17 +382,17 @@ private fun SettingsItem(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = Color.Black.copy(alpha = 0.8f),
+                color = if (tintColor == Color.Gray) Color.Black.copy(alpha = 0.8f) else tintColor,
                 modifier = Modifier.weight(1f)
             )
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = Color.Gray
+                tint = tintColor
             )
         }
         if (showDivider) {
-            Divider(
+            HorizontalDivider(
                 color = Color.LightGray.copy(alpha = 0.3f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 20.dp)
