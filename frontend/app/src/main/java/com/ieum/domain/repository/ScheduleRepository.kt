@@ -16,4 +16,5 @@ interface ScheduleRepository {
     suspend fun addAnniversary(anniversary: Anniversary)
     suspend fun updateSchedule(schedule: Schedule)
     suspend fun deleteSchedule(scheduleId: Int)
+    suspend fun refresh()
 }

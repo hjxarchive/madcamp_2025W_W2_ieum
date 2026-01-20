@@ -24,34 +24,32 @@ class MemoryRepositoryImpl @Inject constructor(
     private var localIdCounter = 100L
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    // Note: refreshMemories() is called when user navigates to memory screen
+    // Note: refresh() is called when user navigates to memory screen
     // Not in init to avoid calling API before login
 
-    private fun refreshMemories() {
-        coroutineScope.launch {
-            try {
-                val response = memoryService.getMemories(page = 0, size = 100)
-                val memoryList = response.memories.map { dto ->
-                    val localId = dto.id.hashCode().toLong()
-                    memoryIdMap[localId] = dto.id
+    private suspend fun refreshMemories() {
+        try {
+            val response = memoryService.getMemories(page = 0, size = 100)
+            val memoryList = response.memories.map { dto ->
+                val localId = dto.id.hashCode().toLong()
+                memoryIdMap[localId] = dto.id
 
-                    Memory(
-                        id = localId,
-                        placeName = dto.title,
-                        address = dto.location ?: "",
-                        comment = dto.content ?: "",
-                        date = dto.date,
-                        latitude = dto.latitude ?: 37.5665,
-                        longitude = dto.longitude ?: 126.9780,
-                        colorHex = getColorForIndex(localId.toInt()),
-                        imageUrl = dto.images?.firstOrNull()
-                    )
-                }
-                memories.value = memoryList
-                Log.d("MemoryRepository", "Loaded ${memoryList.size} memories from API")
-            } catch (e: Exception) {
-                Log.e("MemoryRepository", "Failed to load memories", e)
+                Memory(
+                    id = localId,
+                    placeName = dto.title,
+                    address = dto.location ?: "",
+                    comment = dto.content ?: "",
+                    date = dto.date,
+                    latitude = dto.latitude ?: 37.5665,
+                    longitude = dto.longitude ?: 126.9780,
+                    colorHex = getColorForIndex(localId.toInt()),
+                    imageUrl = dto.images?.firstOrNull()
+                )
             }
+            memories.value = memoryList
+            Log.d("MemoryRepository", "Loaded ${memoryList.size} memories from API")
+        } catch (e: Exception) {
+            Log.e("MemoryRepository", "Failed to load memories", e)
         }
     }
 
@@ -138,5 +136,9 @@ class MemoryRepositoryImpl @Inject constructor(
             Log.e("MemoryRepository", "Failed to delete memory", e)
             memories.value = memories.value.filter { it.id != memoryId }
         }
+    }
+
+    override suspend fun refresh() {
+        refreshMemories()
     }
 }

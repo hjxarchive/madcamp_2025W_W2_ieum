@@ -3,6 +3,7 @@ package com.ieum.presentation.feature.bucket
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ieum.domain.model.BucketCategory
+import com.ieum.domain.repository.BucketRepository
 import com.ieum.domain.usecase.bucket.AddBucketItemUseCase
 import com.ieum.domain.usecase.bucket.GetBucketItemsUseCase
 import com.ieum.domain.usecase.bucket.ToggleBucketCompleteUseCase
@@ -18,14 +19,22 @@ import javax.inject.Inject
 class BucketViewModel @Inject constructor(
     private val getBucketItemsUseCase: GetBucketItemsUseCase,
     private val addBucketItemUseCase: AddBucketItemUseCase,
-    private val toggleBucketCompleteUseCase: ToggleBucketCompleteUseCase
+    private val toggleBucketCompleteUseCase: ToggleBucketCompleteUseCase,
+    private val bucketRepository: BucketRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BucketUiState())
     val uiState: StateFlow<BucketUiState> = _uiState.asStateFlow()
 
     init {
+        refreshData()
         loadBucketItems()
+    }
+
+    private fun refreshData() {
+        viewModelScope.launch {
+            bucketRepository.refresh()
+        }
     }
 
     private fun loadBucketItems() {

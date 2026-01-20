@@ -37,7 +37,8 @@ data class UserUpdateRequest(
     val nickname: String? = null,
     val profileImage: String? = null,
     val birthday: String? = null,
-    val gender: String? = null
+    val gender: String? = null,
+    val mbtiType: String? = null
 )
 
 // ==================== Couple ====================

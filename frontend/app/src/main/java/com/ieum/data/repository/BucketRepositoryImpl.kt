@@ -26,31 +26,29 @@ class BucketRepositoryImpl @Inject constructor(
     private var localIdCounter = 100L
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    // Note: refreshBuckets() is called when user navigates to bucket screen
+    // Note: refresh() is called when user navigates to bucket screen
     // Not in init to avoid calling API before login
 
-    private fun refreshBuckets() {
-        coroutineScope.launch {
-            try {
-                val response = bucketService.getBuckets()
-                val items = response.buckets.map { dto ->
-                    val localId = dto.id.hashCode().toLong()
-                    bucketIdMap[localId] = dto.id
+    private suspend fun refreshBuckets() {
+        try {
+            val response = bucketService.getBuckets()
+            val items = response.buckets.map { dto ->
+                val localId = dto.id.hashCode().toLong()
+                bucketIdMap[localId] = dto.id
 
-                    BucketItem(
-                        id = localId,
-                        title = dto.title,
-                        category = mapCategoryFromServer(dto.category),
-                        isCompleted = dto.isCompleted,
-                        createdAt = dto.createdAt.substring(0, 10),
-                        completedAt = dto.completedAt?.substring(0, 10)
-                    )
-                }
-                bucketItems.value = items
-                Log.d("BucketRepository", "Loaded ${items.size} bucket items from API")
-            } catch (e: Exception) {
-                Log.e("BucketRepository", "Failed to load buckets", e)
+                BucketItem(
+                    id = localId,
+                    title = dto.title,
+                    category = mapCategoryFromServer(dto.category),
+                    isCompleted = dto.isCompleted,
+                    createdAt = dto.createdAt.substring(0, 10),
+                    completedAt = dto.completedAt?.substring(0, 10)
+                )
             }
+            bucketItems.value = items
+            Log.d("BucketRepository", "Loaded ${items.size} bucket items from API")
+        } catch (e: Exception) {
+            Log.e("BucketRepository", "Failed to load buckets", e)
         }
     }
 
@@ -157,5 +155,9 @@ class BucketRepositoryImpl @Inject constructor(
             Log.e("BucketRepository", "Failed to delete bucket", e)
             bucketItems.value = bucketItems.value.filter { it.id != itemId }
         }
+    }
+
+    override suspend fun refresh() {
+        refreshBuckets()
     }
 }

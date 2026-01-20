@@ -64,7 +64,13 @@ class FinanceViewModel @Inject constructor(
     val suggestedCategories: StateFlow<Map<String, Int>> = _suggestedCategories
 
     init {
-        // Budget is automatically loaded via the StateFlow
+        refreshData()
+    }
+
+    private fun refreshData() {
+        viewModelScope.launch {
+            financeRepository.refresh()
+        }
     }
 
     fun setBudget(amount: Int) {

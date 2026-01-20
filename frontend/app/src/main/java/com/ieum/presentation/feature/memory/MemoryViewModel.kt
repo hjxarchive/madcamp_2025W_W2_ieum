@@ -3,6 +3,7 @@ package com.ieum.presentation.feature.memory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ieum.domain.model.Memory
+import com.ieum.domain.repository.MemoryRepository
 import com.ieum.domain.usecase.memory.GetMemoriesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,14 +15,22 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MemoryViewModel @Inject constructor(
-    private val getMemoriesUseCase: GetMemoriesUseCase
+    private val getMemoriesUseCase: GetMemoriesUseCase,
+    private val memoryRepository: MemoryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MemoryUiState())
     val uiState: StateFlow<MemoryUiState> = _uiState.asStateFlow()
 
     init {
+        refreshData()
         loadMemories()
+    }
+
+    private fun refreshData() {
+        viewModelScope.launch {
+            memoryRepository.refresh()
+        }
     }
 
     private fun loadMemories() {

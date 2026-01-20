@@ -9,4 +9,5 @@ interface MemoryRepository {
     suspend fun addMemory(memory: Memory)
     suspend fun updateMemory(memory: Memory)
     suspend fun deleteMemory(memoryId: Long)
+    suspend fun refresh()
 }

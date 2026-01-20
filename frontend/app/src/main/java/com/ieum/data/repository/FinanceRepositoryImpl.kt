@@ -35,45 +35,41 @@ class FinanceRepositoryImpl @Inject constructor(
     private var localIdCounter = 100L
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    // Note: refresh functions are called when user navigates to finance screen
+    // Note: refresh() is called when user navigates to finance screen
     // Not in init to avoid calling API before login
 
-    private fun refreshExpenses() {
-        coroutineScope.launch {
-            try {
-                val currentMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
-                val response = expenseService.getExpenses(yearMonth = currentMonth, page = 0, size = 100)
+    private suspend fun refreshExpenses() {
+        try {
+            val currentMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+            val response = expenseService.getExpenses(yearMonth = currentMonth, page = 0, size = 100)
 
-                val expenseList = response.expenses.map { dto ->
-                    val localId = dto.id.hashCode().toLong()
-                    expenseIdMap[localId] = dto.id
+            val expenseList = response.expenses.map { dto ->
+                val localId = dto.id.hashCode().toLong()
+                expenseIdMap[localId] = dto.id
 
-                    Expense(
-                        id = localId.toString(),
-                        title = dto.description ?: "",
-                        category = mapCategoryFromServer(dto.category),
-                        amount = dto.amount.toInt(),
-                        date = dto.date.replace("-", ".")
-                    )
-                }
-                expenses.value = expenseList
-                Log.d("FinanceRepository", "Loaded ${expenseList.size} expenses from API")
-            } catch (e: Exception) {
-                Log.e("FinanceRepository", "Failed to load expenses", e)
+                Expense(
+                    id = localId.toString(),
+                    title = dto.description ?: "",
+                    category = mapCategoryFromServer(dto.category),
+                    amount = dto.amount.toInt(),
+                    date = dto.date.replace("-", ".")
+                )
             }
+            expenses.value = expenseList
+            Log.d("FinanceRepository", "Loaded ${expenseList.size} expenses from API")
+        } catch (e: Exception) {
+            Log.e("FinanceRepository", "Failed to load expenses", e)
         }
     }
 
-    private fun refreshBudget() {
-        coroutineScope.launch {
-            try {
-                val currentMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
-                val response = budgetService.getBudget(currentMonth)
-                budgetAmount.value = response.totalBudget.toInt()
-                Log.d("FinanceRepository", "Loaded budget: ${response.totalBudget}")
-            } catch (e: Exception) {
-                Log.e("FinanceRepository", "Failed to load budget (using default)", e)
-            }
+    private suspend fun refreshBudget() {
+        try {
+            val currentMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+            val response = budgetService.getBudget(currentMonth)
+            budgetAmount.value = response.totalBudget.toInt()
+            Log.d("FinanceRepository", "Loaded budget: ${response.totalBudget}")
+        } catch (e: Exception) {
+            Log.e("FinanceRepository", "Failed to load budget (using default)", e)
         }
     }
 
@@ -195,5 +191,10 @@ class FinanceRepositoryImpl @Inject constructor(
             Log.e("FinanceRepository", "Failed to delete expense", e)
             expenses.value = expenses.value.filter { it.id != expenseId.toString() }
         }
+    }
+
+    override suspend fun refresh() {
+        refreshExpenses()
+        refreshBudget()
     }
 }

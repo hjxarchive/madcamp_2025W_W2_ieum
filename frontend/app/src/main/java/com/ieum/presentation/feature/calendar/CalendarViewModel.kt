@@ -24,10 +24,19 @@ class CalendarViewModel @Inject constructor(
     val uiState: StateFlow<CalendarUiState> = _uiState.asStateFlow()
 
     init {
+        refreshAllData()
         loadAllData()
         observeExpenses()
         observeSchedules()
         observeBucketList()
+    }
+
+    private fun refreshAllData() {
+        viewModelScope.launch {
+            scheduleRepository.refresh()
+            financeRepository.refresh()
+            bucketRepository.refresh()
+        }
     }
 
     private fun loadAllData() {

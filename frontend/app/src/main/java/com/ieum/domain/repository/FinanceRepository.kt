@@ -14,4 +14,5 @@ interface FinanceRepository {
     suspend fun setBudget(amount: Int)
     suspend fun addExpense(expense: Expense)
     suspend fun deleteExpense(expenseId: Long)
+    suspend fun refresh()
 }

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ieum.data.api.CoupleService
+import com.ieum.data.api.MbtiService
 import com.ieum.data.api.UserService
 import com.ieum.domain.model.CoupleInfo
 import com.ieum.domain.model.User
@@ -23,6 +24,7 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val coupleService: CoupleService,
     private val userService: UserService,
+    private val mbtiService: MbtiService,
     private val testRepository: TestRepository,
     private val authRepository: AuthRepository
 ) : ViewModel() {
@@ -35,6 +37,7 @@ class ProfileViewModel @Inject constructor(
 
     init {
         loadProfile()
+        loadMbtiData()
     }
 
     private fun loadProfile() {
@@ -91,6 +94,7 @@ class ProfileViewModel @Inject constructor(
 
                     _uiState.value = _uiState.value.copy(
                         coupleInfo = coupleInfo,
+                        partnerMbti = coupleResponse.partner?.mbtiType,
                         isLoading = false,
                         error = null
                     )
@@ -115,6 +119,22 @@ class ProfileViewModel @Inject constructor(
                     isLoading = false,
                     error = e.message
                 )
+            }
+        }
+    }
+
+    private fun loadMbtiData() {
+        viewModelScope.launch {
+            try {
+                val mbtiResult = mbtiService.getCoupleResult()
+                Log.d("ProfileViewModel", "MBTI 결과: myMbti=${mbtiResult.myMbti}, partnerMbti=${mbtiResult.partnerMbti}")
+
+                _uiState.value = _uiState.value.copy(
+                    myMbti = mbtiResult.myMbti ?: _uiState.value.myMbti,
+                    partnerMbti = mbtiResult.partnerMbti ?: _uiState.value.partnerMbti
+                )
+            } catch (e: Exception) {
+                Log.e("ProfileViewModel", "MBTI 데이터 로드 실패", e)
             }
         }
     }

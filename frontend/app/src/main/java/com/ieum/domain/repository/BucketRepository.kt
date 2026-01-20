@@ -10,4 +10,5 @@ interface BucketRepository {
     suspend fun addBucketItem(title: String, category: BucketCategory)
     suspend fun toggleComplete(itemId: Long)
     suspend fun deleteBucketItem(itemId: Long)
+    suspend fun refresh()
 }

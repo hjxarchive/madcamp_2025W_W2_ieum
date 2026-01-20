@@ -28,50 +28,48 @@ class ScheduleRepositoryImpl @Inject constructor(
     private val anniversaries = MutableStateFlow<List<Anniversary>>(emptyList())
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    // Note: refreshSchedules() is called when user navigates to schedule screen
+    // Note: refresh() is called when user navigates to schedule screen
     // Not in init to avoid calling API before login
 
-    private fun refreshSchedules() {
-        coroutineScope.launch {
-            try {
-                val now = LocalDateTime.now()
-                val startDate = now.minusMonths(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                val endDate = now.plusMonths(2).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    private suspend fun refreshSchedules() {
+        try {
+            val now = LocalDateTime.now()
+            val startDate = now.minusMonths(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            val endDate = now.plusMonths(2).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
-                val response = eventService.getEvents(startDate, endDate)
-                val scheduleList = response.events.map { dto ->
-                    Schedule(
-                        id = dto.id.hashCode(),
+            val response = eventService.getEvents(startDate, endDate)
+            val scheduleList = response.events.map { dto ->
+                Schedule(
+                    id = dto.id.hashCode(),
+                    title = dto.title,
+                    date = LocalDate.parse(dto.startDate.substring(0, 10)),
+                    time = dto.startDate.substring(11, 16),
+                    colorHex = "#FF6B9D",
+                    isShared = true,
+                    description = dto.description
+                )
+            }
+            schedules.value = scheduleList
+            Log.d("ScheduleRepository", "Loaded ${scheduleList.size} schedules from API")
+
+            // Load D-days for anniversaries
+            try {
+                val dDaysResponse = eventService.getDDays()
+                val anniversaryList = dDaysResponse.ddays.mapIndexed { index, dto ->
+                    Anniversary(
+                        id = index.toLong(),
                         title = dto.title,
-                        date = LocalDate.parse(dto.startDate.substring(0, 10)),
-                        time = dto.startDate.substring(11, 16),
-                        colorHex = "#FF6B9D",
-                        isShared = true,
-                        description = dto.description
+                        emoji = if (dto.type == "anniversary") "💕" else "📅",
+                        dDay = if (dto.dday >= 0) "D-${dto.dday}" else "D+${-dto.dday}",
+                        date = LocalDate.parse(dto.date)
                     )
                 }
-                schedules.value = scheduleList
-                Log.d("ScheduleRepository", "Loaded ${scheduleList.size} schedules from API")
-
-                // Load D-days for anniversaries
-                try {
-                    val dDaysResponse = eventService.getDDays()
-                    val anniversaryList = dDaysResponse.ddays.mapIndexed { index, dto ->
-                        Anniversary(
-                            id = index.toLong(),
-                            title = dto.title,
-                            emoji = if (dto.type == "anniversary") "💕" else "📅",
-                            dDay = if (dto.dday >= 0) "D-${dto.dday}" else "D+${-dto.dday}",
-                            date = LocalDate.parse(dto.date)
-                        )
-                    }
-                    anniversaries.value = anniversaryList
-                } catch (e: Exception) {
-                    Log.e("ScheduleRepository", "Failed to load D-days", e)
-                }
+                anniversaries.value = anniversaryList
             } catch (e: Exception) {
-                Log.e("ScheduleRepository", "Failed to load schedules", e)
+                Log.e("ScheduleRepository", "Failed to load D-days", e)
             }
+        } catch (e: Exception) {
+            Log.e("ScheduleRepository", "Failed to load schedules", e)
         }
     }
 
@@ -181,5 +179,9 @@ class ScheduleRepositoryImpl @Inject constructor(
             Log.e("ScheduleRepository", "Failed to delete schedule", e)
             schedules.value = schedules.value.filter { it.id != scheduleId }
         }
+    }
+
+    override suspend fun refresh() {
+        refreshSchedules()
     }
 }

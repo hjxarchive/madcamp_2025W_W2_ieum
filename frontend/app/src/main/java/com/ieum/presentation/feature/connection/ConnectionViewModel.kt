@@ -5,7 +5,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ieum.data.api.CoupleService
 import com.ieum.data.dto.CoupleJoinRequest
+import com.ieum.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,14 +17,59 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ConnectionViewModel @Inject constructor(
-    private val coupleService: CoupleService
+    private val coupleService: CoupleService,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConnectionUiState())
     val uiState: StateFlow<ConnectionUiState> = _uiState.asStateFlow()
 
+    private var pollingJob: kotlinx.coroutines.Job? = null
+
     init {
         generateInviteCode()
+        startPollingCoupleStatus()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        pollingJob?.cancel()
+    }
+
+    /**
+     * 주기적으로 커플 연결 상태 확인 (코드 생성자용)
+     */
+    private fun startPollingCoupleStatus() {
+        pollingJob = viewModelScope.launch {
+            while (true) {
+                delay(3000) // 3초마다 확인
+                if (_uiState.value.isConnected) {
+                    break // 이미 연결됨
+                }
+                try {
+                    val coupleInfo = coupleService.getCoupleInfo()
+                    // partner가 있으면 연결 완료
+                    if (coupleInfo.partner != null) {
+                        Log.d("CoupleConnection", "폴링: 커플 연결 감지! 파트너: ${coupleInfo.partner.nickname}")
+                        // 파트너 닉네임 저장
+                        coupleInfo.partner.nickname?.let { nickname ->
+                            userRepository.updatePartnerNickname(nickname)
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isConnected = true,
+                                partnerNickname = coupleInfo.partner.nickname,
+                                showSuccessModal = true
+                            )
+                        }
+                        break
+                    }
+                } catch (e: Exception) {
+                    // 404 등의 에러는 아직 연결 안됨 - 무시
+                    Log.d("CoupleConnection", "폴링: 아직 연결 안됨")
+                }
+            }
+        }
     }
 
     /**
@@ -44,11 +91,34 @@ class ConnectionViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                Log.e("CoupleConnection", "초대 코드 생성 실패", e)
+                Log.e("CoupleConnection", "초대 코드 생성 실패: ${e.message}", e)
+
+                // 409 에러 (이미 커플이 있음) - 기존 커플 삭제 후 재시도
+                if (e.message?.contains("409") == true) {
+                    Log.d("CoupleConnection", "기존 커플이 존재함. 삭제 후 재시도...")
+                    try {
+                        coupleService.disconnectCouple()
+                        Log.d("CoupleConnection", "기존 커플 삭제 완료. 1초 후 재시도...")
+                        delay(1000) // 서버 처리 대기
+                        val response = coupleService.createInviteCode()
+                        Log.d("CoupleConnection", "재시도 성공: ${response.inviteCode}")
+                        _uiState.update {
+                            it.copy(
+                                myCode = response.inviteCode,
+                                myCodeExpiresAt = response.expiresAt,
+                                isLoadingMyCode = false
+                            )
+                        }
+                        return@launch
+                    } catch (retryError: Exception) {
+                        Log.e("CoupleConnection", "재시도 실패: ${retryError.message}", retryError)
+                    }
+                }
+
                 _uiState.update {
                     it.copy(
                         isLoadingMyCode = false,
-                        errorMessage = "초대 코드 생성에 실패했습니다: ${e.message}"
+                        errorMessage = "초대 코드 생성에 실패했습니다"
                     )
                 }
             }
@@ -100,6 +170,11 @@ class ConnectionViewModel @Inject constructor(
                 val response = coupleService.joinCouple(CoupleJoinRequest(partnerCode))
                 Log.d("CoupleConnection", "커플 연결 성공: ${response.partner?.nickname}")
 
+                // 파트너 닉네임 저장
+                response.partner?.nickname?.let { nickname ->
+                    userRepository.updatePartnerNickname(nickname)
+                }
+
                 _uiState.update {
                     it.copy(
                         isConnecting = false,
@@ -109,13 +184,39 @@ class ConnectionViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                Log.e("CoupleConnection", "커플 연결 실패", e)
+                Log.e("CoupleConnection", "커플 연결 실패: ${e.message}", e)
+
+                // 409 에러 - 기존 커플 삭제 후 재시도
+                if (e.message?.contains("409") == true) {
+                    Log.d("CoupleConnection", "기존 커플 삭제 후 연결 재시도...")
+                    try {
+                        coupleService.disconnectCouple()
+                        delay(500)
+                        val response = coupleService.joinCouple(CoupleJoinRequest(partnerCode))
+                        Log.d("CoupleConnection", "재연결 성공: ${response.partner?.nickname}")
+                        // 파트너 닉네임 저장
+                        response.partner?.nickname?.let { nickname ->
+                            userRepository.updatePartnerNickname(nickname)
+                        }
+                        _uiState.update {
+                            it.copy(
+                                isConnecting = false,
+                                isConnected = true,
+                                partnerNickname = response.partner?.nickname,
+                                showSuccessModal = true
+                            )
+                        }
+                        return@launch
+                    } catch (retryError: Exception) {
+                        Log.e("CoupleConnection", "재연결 실패: ${retryError.message}", retryError)
+                    }
+                }
 
                 val errorMessage = when {
                     e.message?.contains("404") == true -> "유효하지 않은 코드입니다"
                     e.message?.contains("409") == true -> "이미 연결된 커플이 있습니다"
                     e.message?.contains("410") == true -> "만료된 코드입니다"
-                    else -> "연결에 실패했습니다: ${e.message}"
+                    else -> "연결에 실패했습니다"
                 }
 
                 _uiState.update {

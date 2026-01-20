@@ -6,7 +6,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ieum.data.api.MbtiService
+import com.ieum.data.api.UserService
 import com.ieum.data.dto.MbtiSubmitRequest
+import com.ieum.data.dto.UserUpdateRequest
 import com.ieum.domain.repository.TestRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +25,8 @@ private val Context.testDataStore by preferencesDataStore(name = "test_prefs")
 @Singleton
 class TestRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val mbtiService: MbtiService
+    private val mbtiService: MbtiService,
+    private val userService: UserService
 ) : TestRepository {
 
     private val MBTI_KEY = stringPreferencesKey("my_mbti")
@@ -75,6 +78,14 @@ class TestRepositoryImpl @Inject constructor(
     override suspend fun saveMbtiResult(mbti: String) {
         _mbtiResult.value = mbti
         saveMbtiToDataStore(mbti)
+        // Also send to server
+        try {
+            val request = UserUpdateRequest(mbtiType = mbti)
+            userService.updateMe(request)
+            Log.d("TestRepository", "MBTI saved to server: $mbti")
+        } catch (e: Exception) {
+            Log.e("TestRepository", "Failed to save MBTI to server", e)
+        }
     }
 
     override suspend fun savePartnerMbtiResult(mbti: String) {

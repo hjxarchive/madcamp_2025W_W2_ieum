@@ -25,9 +25,16 @@ class DashboardViewModel @Inject constructor(
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
+        refreshData()
         observeUserData()
         loadEvents()
         observeFinanceData()
+    }
+
+    private fun refreshData() {
+        viewModelScope.launch {
+            financeRepository.refresh()
+        }
     }
 
     private fun observeUserData() {
