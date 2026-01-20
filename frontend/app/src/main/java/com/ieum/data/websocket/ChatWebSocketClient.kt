@@ -29,8 +29,8 @@ class ChatWebSocketClient @Inject constructor(
 ) {
     companion object {
         private const val TAG = "ChatWebSocketClient"
-        // WebSocket 서버 URL (nginx 프록시)
-        private const val WS_BASE_URL = "ws://54.66.195.91/ws/chat"
+        // 순수 WebSocket 엔드포인트 (SockJS 제거)
+        private const val WS_BASE_URL = "ws://54.66.195.91/ws/stomp"
     }
 
     private var stompClient: StompClient? = null
@@ -57,18 +57,23 @@ class ChatWebSocketClient @Inject constructor(
         this.listener = listener
         this.currentJwtToken = jwtToken
 
+        // 디버깅: 연결 정보 로그
+        Log.d(TAG, "========== WebSocket Connection Attempt ==========")
+        Log.d(TAG, "CoupleId: $coupleId")
+        Log.d(TAG, "Token (first 20 chars): ${jwtToken.take(20)}...")
+        Log.d(TAG, "Token length: ${jwtToken.length}")
+
         // 수동 재연결이 아닌 경우에만 시도 횟수 리셋
         if (!isReconnecting) {
             reconnectAttempts = 0
         }
         isReconnecting = false
 
-        // SockJS WebSocket URL (서버가 SockJS 형식을 요구함)
-        // 형식: /ws/chat/{server_id}/{session_id}/websocket?token=...
-        val serverId = (Math.random() * 1000).toInt().toString()
-        val sessionId = UUID.randomUUID().toString().replace("-", "").substring(0, 8)
-        val wsUrl = "$WS_BASE_URL/$serverId/$sessionId/websocket?token=$jwtToken"
-        Log.d(TAG, "Connecting to WebSocket: $WS_BASE_URL/$serverId/$sessionId/websocket (attempt: ${reconnectAttempts + 1})")
+        // 순수 WebSocket URL (SockJS 제거)
+        // 형식: /ws/stomp?token=...
+        val wsUrl = "$WS_BASE_URL?token=$jwtToken"
+        Log.d(TAG, "Full WebSocket URL: $wsUrl")
+        Log.d(TAG, "Attempt: ${reconnectAttempts + 1}/$maxReconnectAttempts")
 
         val okHttpClient = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
@@ -92,26 +97,29 @@ class ChatWebSocketClient @Inject constructor(
             .subscribe { lifecycleEvent ->
                 when (lifecycleEvent.type) {
                     LifecycleEvent.Type.OPENED -> {
-                        Log.d(TAG, "WebSocket connected")
+                        Log.d(TAG, "✅ WebSocket connected successfully!")
                         isConnected = true
                         reconnectAttempts = 0 // 연결 성공 시 재연결 횟수 리셋
                         subscribeToTopics()
                         listener.onConnected()
                     }
                     LifecycleEvent.Type.ERROR -> {
-                        Log.e(TAG, "WebSocket error", lifecycleEvent.exception)
+                        Log.e(TAG, "❌ WebSocket error occurred")
+                        Log.e(TAG, "Error message: ${lifecycleEvent.exception?.message}")
+                        Log.e(TAG, "Error type: ${lifecycleEvent.exception?.javaClass?.simpleName}")
+                        lifecycleEvent.exception?.printStackTrace()
                         isConnected = false
                         listener.onError(lifecycleEvent.exception ?: Exception("Unknown WebSocket error"))
                         scheduleReconnect()
                     }
                     LifecycleEvent.Type.CLOSED -> {
-                        Log.d(TAG, "WebSocket closed")
+                        Log.d(TAG, "🔌 WebSocket closed")
                         isConnected = false
                         listener.onDisconnected()
                         scheduleReconnect()
                     }
                     LifecycleEvent.Type.FAILED_SERVER_HEARTBEAT -> {
-                        Log.w(TAG, "Server heartbeat failed")
+                        Log.w(TAG, "💔 Server heartbeat failed")
                         scheduleReconnect()
                     }
                     else -> {}
@@ -128,105 +136,154 @@ class ChatWebSocketClient @Inject constructor(
     private fun subscribeToTopics() {
         val currentCoupleId = coupleId ?: return
 
-        // 일반 메시지 구독
-        subscribeToMessages(currentCoupleId)
+        Log.d(TAG, "========== Starting Topic Subscriptions ==========")
+        Log.d(TAG, "Couple ID: $currentCoupleId")
 
-        // E2EE 메시지 구독
-        subscribeToE2EEMessages(currentCoupleId)
+        try {
+            // 일반 메시지 구독
+            Log.d(TAG, "Subscribing to messages...")
+            subscribeToMessages(currentCoupleId)
 
-        // 읽음 확인 구독
-        subscribeToReadReceipts(currentCoupleId)
+            // E2EE 메시지 구독
+            Log.d(TAG, "Subscribing to E2EE messages...")
+            subscribeToE2EEMessages(currentCoupleId)
 
-        // 타이핑 인디케이터 구독
-        subscribeToTypingIndicator(currentCoupleId)
+            // 읽음 확인 구독
+            Log.d(TAG, "Subscribing to read receipts...")
+            subscribeToReadReceipts(currentCoupleId)
+
+            // 타이핑 인디케이터 구독
+            Log.d(TAG, "Subscribing to typing indicator...")
+            subscribeToTypingIndicator(currentCoupleId)
+
+            Log.d(TAG, "✅ All subscriptions initiated")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to subscribe to topics", e)
+        }
     }
 
     /**
      * 일반 메시지 구독
      */
     private fun subscribeToMessages(coupleId: String) {
-        val disposable = stompClient?.topic("/topic/couple/$coupleId")
+        val topic = "/topic/couple/$coupleId"
+        Log.d(TAG, "Subscribing to topic: $topic")
+
+        val disposable = stompClient?.topic(topic)
             ?.subscribeOn(Schedulers.io())
             ?.observeOn(AndroidSchedulers.mainThread())
             ?.subscribe({ stompMessage ->
                 try {
                     val message = gson.fromJson(stompMessage.payload, WebSocketMessageResponse::class.java)
-                    Log.d(TAG, "Received message: ${message.id}")
+                    Log.d(TAG, "✅ Received message: ${message.id}")
                     listener?.onMessageReceived(message)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to parse message", e)
+                    Log.e(TAG, "❌ Failed to parse message", e)
                 }
             }, { error ->
-                Log.e(TAG, "Message subscription error", error)
+                Log.e(TAG, "❌ Message subscription error for $topic", error)
+                listener?.onError(error)
+            }, {
+                Log.d(TAG, "✅ Successfully subscribed to $topic")
             })
 
-        disposable?.let { disposables.add(it) }
+        disposable?.let {
+            disposables.add(it)
+            Log.d(TAG, "✅ Added message subscription disposable")
+        }
     }
 
     /**
      * E2EE 메시지 구독 (Phase 2에서 구현 예정)
      */
     private fun subscribeToE2EEMessages(coupleId: String) {
-        val disposable = stompClient?.topic("/topic/couple/$coupleId/e2ee")
+        val topic = "/topic/couple/$coupleId/e2ee"
+        Log.d(TAG, "Subscribing to topic: $topic")
+
+        val disposable = stompClient?.topic(topic)
             ?.subscribeOn(Schedulers.io())
             ?.observeOn(AndroidSchedulers.mainThread())
             ?.subscribe({ stompMessage ->
                 try {
                     val message = gson.fromJson(stompMessage.payload, WebSocketE2EEMessageResponse::class.java)
-                    Log.d(TAG, "Received E2EE message: ${message.id}")
+                    Log.d(TAG, "✅ Received E2EE message: ${message.id}")
                     listener?.onE2EEMessageReceived(message)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to parse E2EE message", e)
+                    Log.e(TAG, "❌ Failed to parse E2EE message", e)
                 }
             }, { error ->
-                Log.e(TAG, "E2EE message subscription error", error)
+                Log.e(TAG, "❌ E2EE message subscription error for $topic", error)
+                listener?.onError(error)
+            }, {
+                Log.d(TAG, "✅ Successfully subscribed to $topic")
             })
 
-        disposable?.let { disposables.add(it) }
+        disposable?.let {
+            disposables.add(it)
+            Log.d(TAG, "✅ Added E2EE subscription disposable")
+        }
     }
 
     /**
      * 읽음 확인 구독
      */
     private fun subscribeToReadReceipts(coupleId: String) {
-        val disposable = stompClient?.topic("/topic/couple/$coupleId/read")
+        val topic = "/topic/couple/$coupleId/read"
+        Log.d(TAG, "Subscribing to topic: $topic")
+
+        val disposable = stompClient?.topic(topic)
             ?.subscribeOn(Schedulers.io())
             ?.observeOn(AndroidSchedulers.mainThread())
             ?.subscribe({ stompMessage ->
                 try {
                     val receipt = gson.fromJson(stompMessage.payload, ReadReceiptMessage::class.java)
-                    Log.d(TAG, "Received read receipt: ${receipt.messageIds.size} messages")
+                    Log.d(TAG, "✅ Received read receipt: ${receipt.messageIds.size} messages")
                     listener?.onReadReceipt(receipt.messageIds, receipt.readAt)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to parse read receipt", e)
+                    Log.e(TAG, "❌ Failed to parse read receipt", e)
                 }
             }, { error ->
-                Log.e(TAG, "Read receipt subscription error", error)
+                Log.e(TAG, "❌ Read receipt subscription error for $topic", error)
+                listener?.onError(error)
+            }, {
+                Log.d(TAG, "✅ Successfully subscribed to $topic")
             })
 
-        disposable?.let { disposables.add(it) }
+        disposable?.let {
+            disposables.add(it)
+            Log.d(TAG, "✅ Added read receipt subscription disposable")
+        }
     }
 
     /**
      * 타이핑 인디케이터 구독
      */
     private fun subscribeToTypingIndicator(coupleId: String) {
-        val disposable = stompClient?.topic("/topic/couple/$coupleId/typing")
+        val topic = "/topic/couple/$coupleId/typing"
+        Log.d(TAG, "Subscribing to topic: $topic")
+
+        val disposable = stompClient?.topic(topic)
             ?.subscribeOn(Schedulers.io())
             ?.observeOn(AndroidSchedulers.mainThread())
             ?.subscribe({ stompMessage ->
                 try {
                     val indicator = gson.fromJson(stompMessage.payload, TypingIndicator::class.java)
-                    Log.d(TAG, "Typing indicator: ${indicator.userId} - ${indicator.isTyping}")
+                    Log.d(TAG, "✅ Typing indicator: ${indicator.userId} - ${indicator.isTyping}")
                     listener?.onTypingIndicator(indicator.userId, indicator.isTyping)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to parse typing indicator", e)
+                    Log.e(TAG, "❌ Failed to parse typing indicator", e)
                 }
             }, { error ->
-                Log.e(TAG, "Typing indicator subscription error", error)
+                Log.e(TAG, "❌ Typing indicator subscription error for $topic", error)
+                listener?.onError(error)
+            }, {
+                Log.d(TAG, "✅ Successfully subscribed to $topic")
             })
 
-        disposable?.let { disposables.add(it) }
+        disposable?.let {
+            disposables.add(it)
+            Log.d(TAG, "✅ Added typing indicator subscription disposable")
+        }
     }
 
     /**

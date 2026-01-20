@@ -118,31 +118,44 @@ class ChatRepositoryImpl @Inject constructor(
     override fun getMessages(): Flow<List<ChatMessage>> = messages
 
     override suspend fun connectWebSocket() {
+        Log.d(TAG, "========== Starting WebSocket Connection ==========")
         _connectionState.value = ChatConnectionState.CONNECTING
 
         try {
+            // Step 1: Get token
+            Log.d(TAG, "Step 1: Retrieving auth token...")
             val token = authRepository.getToken()
             if (token == null) {
-                Log.e(TAG, "Cannot connect: no auth token")
+                Log.e(TAG, "❌ FAIL: No auth token found!")
                 _connectionState.value = ChatConnectionState.ERROR
                 return
             }
+            Log.d(TAG, "✅ Token retrieved (${token.length} chars)")
 
-            // Get current user ID
+            // Step 2: Get current user ID
+            Log.d(TAG, "Step 2: Retrieving user info...")
             val userResult = authRepository.getMe()
             userResult.onSuccess { user ->
                 currentUserId = user.id
+                Log.d(TAG, "✅ User ID: $currentUserId")
+            }.onFailure { error ->
+                Log.e(TAG, "⚠️ Failed to get user info: ${error.message}")
             }
 
-            // Get couple info to get coupleId
+            // Step 3: Get couple info to get coupleId
+            Log.d(TAG, "Step 3: Retrieving couple info...")
             val coupleInfo = coupleService.getCoupleInfo()
             currentCoupleId = coupleInfo.id
+            Log.d(TAG, "✅ Couple ID: $currentCoupleId")
 
-            Log.d(TAG, "Connecting WebSocket with coupleId: $currentCoupleId")
+            // Step 4: Connect WebSocket
+            Log.d(TAG, "Step 4: Initiating WebSocket connection...")
             webSocketClient.connect(token, currentCoupleId!!, chatEventListener)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to connect WebSocket", e)
+            Log.e(TAG, "❌ Failed to connect WebSocket")
+            Log.e(TAG, "Error: ${e.message}")
+            e.printStackTrace()
             _connectionState.value = ChatConnectionState.ERROR
         }
     }
