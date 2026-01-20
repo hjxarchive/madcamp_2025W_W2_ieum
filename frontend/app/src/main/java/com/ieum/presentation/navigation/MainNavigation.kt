@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -40,14 +42,8 @@ fun MainNavigation() {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // 신규 로그인 성공 시 MBTI 테스트로 이동
+                    // 로그인 성공 시 MBTI 테스트로 이동
                     navController.navigate(Routes.MBTI_TEST) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
-                    }
-                },
-                onAlreadyLoggedIn = {
-                    // 이미 로그인된 사용자는 메인 화면으로 바로 이동
-                    navController.navigate(Routes.MAIN) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
@@ -65,7 +61,7 @@ fun MainNavigation() {
                 }
             )
         }
-        
+
         // 온보딩 기능 (중첩 그래프)
         navigation(
             startDestination = Routes.ONBOARDING_NICKNAME,
@@ -77,9 +73,9 @@ fun MainNavigation() {
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)
                 }
-                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel = 
+                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel =
                     androidx.hilt.navigation.compose.hiltViewModel(onboardingBackStackEntry)
-                
+
                 com.ieum.presentation.feature.onboarding.NicknameInputScreen(
                     viewModel = onboardingViewModel,
                     onNext = {
@@ -87,16 +83,16 @@ fun MainNavigation() {
                     }
                 )
             }
-            
+
             // 온보딩 2단계: 생일 입력
             composable(Routes.ONBOARDING_BIRTHDAY) { backStackEntry ->
                 // 온보딩 플로우 전체에서 공유할 ViewModel
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)
                 }
-                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel = 
+                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel =
                     androidx.hilt.navigation.compose.hiltViewModel(onboardingBackStackEntry)
-                
+
                 com.ieum.presentation.feature.onboarding.BirthdayInputScreen(
                     viewModel = onboardingViewModel,
                     onNext = {
@@ -104,16 +100,16 @@ fun MainNavigation() {
                     }
                 )
             }
-            
+
             // 온보딩 3단계: 기념일 입력
             composable(Routes.ONBOARDING_ANNIVERSARY) { backStackEntry ->
                 // 온보딩 플로우 전체에서 공유할 ViewModel
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)
                 }
-                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel = 
+                val onboardingViewModel: com.ieum.presentation.feature.onboarding.OnboardingViewModel =
                     androidx.hilt.navigation.compose.hiltViewModel(onboardingBackStackEntry)
-                
+
                 com.ieum.presentation.feature.onboarding.AnniversaryInputScreen(
                     viewModel = onboardingViewModel,
                     onNext = {
@@ -147,13 +143,7 @@ fun MainNavigation() {
             com.ieum.presentation.feature.profile.MyPageScreen(
                 onBackClick = { navController.popBackStack() },
                 onNavigateToConsumption = { navController.navigate(Routes.CONSUMPTION) },
-                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) },
-                onLogout = {
-                    // 로그아웃 시 로그인 화면으로 이동 (모든 백스택 제거)
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
+                onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) }
             )
         }
 
@@ -193,10 +183,10 @@ sealed class BottomNavItem(
 }
 
 val bottomNavItems = listOf(
-    BottomNavItem.Dashboard,
+    BottomNavItem.Calendar,
     BottomNavItem.MapGallery,
     BottomNavItem.Chat,
-    BottomNavItem.Calendar
+    BottomNavItem.Dashboard
 )
 
 /**
@@ -210,15 +200,15 @@ fun MainScreen(
     onNavigateToBudgetPlanning: () -> Unit,
     onNavigateToClicker: () -> Unit
 ) {
-    // 대시보드가 기본 (index 0 - Dashboard=0, Map=1, Chat=2, Calendar=3)
-    var selectedItem by remember { mutableIntStateOf(0) }
+    // 대시보드가 기본 (index 3 - Calendar=0, Map=1, Chat=2, Dashboard=3)
+    var selectedItem by remember { mutableIntStateOf(3) }
 
     Scaffold(
         modifier = modifier,
         containerColor = Color.Transparent,
         bottomBar = {
-            // ✅ 캘린더 화면(index 3)과 채팅 화면(index 2)이 아닐 때만 바텀 바를 표시합니다.
-            if (selectedItem != 3 && selectedItem != 2) {
+            // ✅ 캘린더 화면(index 0)과 채팅 화면(index 2)이 아닐 때만 바텀 바를 표시합니다.
+            if (selectedItem != 0 && selectedItem != 2) {
                 IeumBottomNavigation(
                     selectedIndex = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -229,8 +219,10 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // 바텀 바가 숨겨질 때는 패딩을 주지 않아 화면을 꽉 채우게 합니다.
-                .padding(if (selectedItem != 3 && selectedItem != 2) paddingValues else PaddingValues(0.dp))
+                .padding(
+                    top = if (selectedItem != 0 && selectedItem != 2) paddingValues.calculateTopPadding() else 0.dp,
+                    bottom = 0.dp
+                )
         ) {
             AnimatedContent(
                 targetState = selectedItem,
@@ -241,12 +233,12 @@ fun MainScreen(
                 label = "screen_transition"
             ) { index ->
                 when (bottomNavItems[index]) {
-                    // ✅ 뒤로 가기 시 다시 대시보드(index 0)로 돌아오도록 설정
-                    BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 0 })
+                    // ✅ 뒤로 가기 시 다시 대시보드(index 3)로 돌아오도록 설정
+                    BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 3 })
                     BottomNavItem.MapGallery -> MapGalleryContent()
-                    BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 0 }, onNavigateToBudgetPlanning = onNavigateToBudgetPlanning)
+                    BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 3 }, onNavigateToBudgetPlanning = onNavigateToBudgetPlanning)
                     BottomNavItem.Dashboard -> DashboardContent(
-                        onNavigateToCalendar = { selectedItem = 3 },
+                        onNavigateToCalendar = { selectedItem = 0 },
                         onNavigateToMyPage = onNavigateToMyPage,
                         onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
                         onNavigateToClicker = onNavigateToClicker
@@ -264,8 +256,8 @@ fun IeumBottomNavigation(
     modifier: Modifier = Modifier
 ) {
     NavigationBar(
-        modifier = modifier,
-        //containerColor = Color.Transparent,
+        modifier = modifier.clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
+        containerColor = Color(0xFFECD4CD).copy(alpha = 0.6f),
         tonalElevation = 0.dp
     ) {
         bottomNavItems.forEachIndexed { index, item ->
@@ -280,11 +272,11 @@ fun IeumBottomNavigation(
                 },
                 label = { Text(text = item.title, style = MaterialTheme.typography.labelSmall) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Color(0xFF5A3E2B),
-                    selectedTextColor = Color(0xFF5A3E2B),
-                    unselectedIconColor = Color(0xFF5A3E2B).copy(alpha = 0.6f),
-                    unselectedTextColor = Color(0xFF5A3E2B).copy(alpha = 0.6f),
-                    indicatorColor = Color.Transparent
+                    selectedIconColor = IeumColors.Primary,
+                    selectedTextColor = IeumColors.Primary,
+                    unselectedIconColor = IeumColors.TextSecondary,
+                    unselectedTextColor = IeumColors.TextSecondary,
+                    indicatorColor = IeumColors.Primary.copy(alpha = 0.1f)
                 )
             )
         }
