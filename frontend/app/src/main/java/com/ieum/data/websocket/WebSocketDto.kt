@@ -111,4 +111,139 @@ interface ChatEventListener {
     fun onTypingIndicator(userId: String, isTyping: Boolean)
     fun onError(error: Throwable)
     fun onMessageSent(tempId: String?)
+
+    // 실시간 동기화 이벤트
+    fun onScheduleSync(message: ScheduleSyncMessage)
+    fun onBucketSync(message: BucketSyncMessage)
+    fun onFinanceSync(message: FinanceSyncMessage)
 }
+
+// ==================== 일정 동기화 ====================
+
+/**
+ * 일정 이벤트 타입
+ */
+enum class ScheduleEventType {
+    @SerializedName("ADDED")
+    ADDED,
+
+    @SerializedName("UPDATED")
+    UPDATED,
+
+    @SerializedName("DELETED")
+    DELETED
+}
+
+/**
+ * 일정 동기화 메시지
+ */
+data class ScheduleSyncMessage(
+    val eventType: ScheduleEventType,
+    val schedule: ScheduleDto,
+    val userId: String,
+    val timestamp: String
+)
+
+/**
+ * 일정 DTO
+ * 백엔드에서 id는 UUID(String) 형태로 전송됨
+ */
+data class ScheduleDto(
+    val id: String,             // UUID 형식 (백엔드)
+    val title: String,
+    val date: String,           // ISO-8601 format (yyyy-MM-dd)
+    val time: String?,          // nullable - 종일 일정의 경우 null
+    val colorHex: String?,      // nullable
+    val description: String?
+)
+
+// ==================== 버킷리스트 동기화 ====================
+
+/**
+ * 버킷 이벤트 타입
+ */
+enum class BucketEventType {
+    @SerializedName("ADDED")
+    ADDED,
+
+    @SerializedName("COMPLETED")
+    COMPLETED,
+
+    @SerializedName("UPDATED")
+    UPDATED,
+
+    @SerializedName("DELETED")
+    DELETED
+}
+
+/**
+ * 버킷 동기화 메시지
+ */
+data class BucketSyncMessage(
+    val eventType: BucketEventType,
+    val bucket: BucketDto,
+    val userId: String,
+    val timestamp: String
+)
+
+/**
+ * 버킷 DTO
+ * 백엔드에서 id는 UUID(String) 형태로 전송됨
+ */
+data class BucketDto(
+    val id: String,             // UUID 형식 (백엔드)
+    val title: String,
+    val category: String?,
+    val isCompleted: Boolean,
+    val createdAt: String,
+    val completedAt: String?
+)
+
+// ==================== 재무 동기화 ====================
+
+/**
+ * 재무 이벤트 타입
+ */
+enum class FinanceEventType {
+    @SerializedName("BUDGET_UPDATED")
+    BUDGET_UPDATED,
+
+    @SerializedName("EXPENSE_ADDED")
+    EXPENSE_ADDED,
+
+    @SerializedName("EXPENSE_UPDATED")
+    EXPENSE_UPDATED,
+
+    @SerializedName("EXPENSE_DELETED")
+    EXPENSE_DELETED
+}
+
+/**
+ * 재무 동기화 메시지
+ */
+data class FinanceSyncMessage(
+    val eventType: FinanceEventType,
+    val budget: BudgetDto?,
+    val expense: ExpenseDto?,
+    val userId: String,
+    val timestamp: String
+)
+
+/**
+ * 예산 DTO
+ */
+data class BudgetDto(
+    val monthlyBudget: Int,
+    val month: String  // "2026-01"
+)
+
+/**
+ * 지출 DTO
+ */
+data class ExpenseDto(
+    val id: String,
+    val title: String,
+    val category: String,
+    val amount: Int,
+    val date: String   // ISO-8601 format (yyyy-MM-dd)
+)

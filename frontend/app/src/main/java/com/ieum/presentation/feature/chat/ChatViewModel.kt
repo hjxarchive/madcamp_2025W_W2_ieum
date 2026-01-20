@@ -213,8 +213,8 @@ class ChatViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        viewModelScope.launch {
-            chatRepository.disconnectWebSocket()
-        }
+        // WebSocket 연결은 DashboardViewModel에서 관리하므로 여기서 끊지 않음
+        // 타이핑 인디케이터만 정리
+        typingJob?.cancel()
     }
 }

@@ -3,6 +3,9 @@ package com.ieum.data.repository
 import android.util.Log
 import com.ieum.data.api.EventService
 import com.ieum.data.dto.EventRequest
+import com.ieum.data.websocket.ChatWebSocketClient
+import com.ieum.data.websocket.ScheduleDto
+import com.ieum.data.websocket.ScheduleSyncMessage
 import com.ieum.domain.model.Anniversary
 import com.ieum.domain.model.Schedule
 import com.ieum.domain.repository.ScheduleRepository
@@ -21,12 +24,16 @@ import javax.inject.Singleton
 
 @Singleton
 class ScheduleRepositoryImpl @Inject constructor(
-    private val eventService: EventService
+    private val eventService: EventService,
+    private val chatWebSocketClient: ChatWebSocketClient
 ) : ScheduleRepository {
 
     private val schedules = MutableStateFlow<List<Schedule>>(emptyList())
     private val anniversaries = MutableStateFlow<List<Anniversary>>(emptyList())
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
+
+    // 로컬 ID (hashCode) -> 서버 ID (UUID) 매핑
+    private val scheduleIdMap = mutableMapOf<Int, String>()
 
     // Note: refresh() is called when user navigates to schedule screen
     // Not in init to avoid calling API before login
@@ -39,8 +46,12 @@ class ScheduleRepositoryImpl @Inject constructor(
 
             val response = eventService.getEvents(startDate, endDate)
             val scheduleList = response.events.map { dto ->
+                val localId = dto.id.hashCode()
+                // ID 매핑 저장
+                scheduleIdMap[localId] = dto.id
+
                 Schedule(
-                    id = dto.id.hashCode(),
+                    id = localId,
                     title = dto.title,
                     date = LocalDate.parse(dto.startDate.substring(0, 10)),
                     time = dto.startDate.substring(11, 16),
@@ -84,8 +95,12 @@ class ScheduleRepositoryImpl @Inject constructor(
 
                 val response = eventService.getEvents(startDate, endDate)
                 val newSchedules = response.events.map { dto ->
+                    val localId = dto.id.hashCode()
+                    // ID 매핑 저장
+                    scheduleIdMap[localId] = dto.id
+
                     Schedule(
-                        id = dto.id.hashCode(),
+                        id = localId,
                         title = dto.title,
                         date = LocalDate.parse(dto.startDate.substring(0, 10)),
                         time = dto.startDate.substring(11, 16),
@@ -115,6 +130,11 @@ class ScheduleRepositoryImpl @Inject constructor(
     override fun getAnniversaries(): Flow<List<Anniversary>> = anniversaries
 
     override suspend fun addSchedule(schedule: Schedule) {
+        // 낙관적 업데이트: 즉시 UI에 표시
+        val tempSchedule = schedule.copy(id = System.currentTimeMillis().toInt())
+        schedules.value = schedules.value + tempSchedule
+        Log.d("ScheduleRepository", "Added schedule optimistically: ${tempSchedule.title}")
+
         try {
             val timeStr = if (schedule.time.isNullOrEmpty()) "00:00" else schedule.time
             val request = EventRequest(
@@ -128,14 +148,33 @@ class ScheduleRepositoryImpl @Inject constructor(
                 repeat = "NONE"
             )
             val response = eventService.createEvent(request)
-            Log.d("ScheduleRepository", "Created event: ${response.id}")
+            Log.d("ScheduleRepository", "Created event on server: ${response.id}")
 
-            // Refresh schedules
-            refreshSchedules()
+            // 서버 ID로 업데이트 (임시 ID를 실제 ID로 교체)
+            val localId = response.id.hashCode()
+            // ID 매핑 저장
+            scheduleIdMap[localId] = response.id
+
+            schedules.value = schedules.value.map {
+                if (it.id == tempSchedule.id) {
+                    it.copy(id = localId)
+                } else it
+            }
+
+            // WebSocket을 통해 파트너에게 추가 이벤트 전송
+            val scheduleDto = ScheduleDto(
+                id = response.id,
+                title = schedule.title,
+                date = schedule.date.toString(),
+                time = schedule.time,
+                colorHex = schedule.colorHex,
+                description = schedule.description
+            )
+            chatWebSocketClient.sendScheduleSyncEvent("ADDED", scheduleDto)
+            Log.d("ScheduleRepository", "📤 Sent add sync event for: ${schedule.title}")
         } catch (e: Exception) {
-            Log.e("ScheduleRepository", "Failed to add schedule", e)
-            // Fallback to local
-            schedules.value = schedules.value + schedule
+            Log.e("ScheduleRepository", "Failed to add schedule to server", e)
+            // 에러 발생 시 낙관적 업데이트는 유지 (로컬에만 존재)
         }
     }
 
@@ -160,6 +199,18 @@ class ScheduleRepositoryImpl @Inject constructor(
             eventService.updateEvent(schedule.id.toString(), request)
             Log.d("ScheduleRepository", "Updated event: ${schedule.id}")
 
+            // WebSocket을 통해 파트너에게 수정 이벤트 전송
+            val scheduleDto = ScheduleDto(
+                id = schedule.id.toString(),
+                title = schedule.title,
+                date = schedule.date.toString(),
+                time = schedule.time,
+                colorHex = schedule.colorHex,
+                description = schedule.description
+            )
+            chatWebSocketClient.sendScheduleSyncEvent("UPDATED", scheduleDto)
+            Log.d("ScheduleRepository", "📤 Sent update sync event for: ${schedule.title}")
+
             refreshSchedules()
         } catch (e: Exception) {
             Log.e("ScheduleRepository", "Failed to update schedule", e)
@@ -170,18 +221,117 @@ class ScheduleRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteSchedule(scheduleId: Int) {
-        try {
-            eventService.deleteEvent(scheduleId.toString())
-            Log.d("ScheduleRepository", "Deleted event: $scheduleId")
-
-            refreshSchedules()
-        } catch (e: Exception) {
-            Log.e("ScheduleRepository", "Failed to delete schedule", e)
+        // 서버 ID(UUID) 가져오기
+        val serverId = scheduleIdMap[scheduleId]
+        if (serverId == null) {
+            Log.e("ScheduleRepository", "❌ Cannot find server ID for schedule: $scheduleId")
+            // 로컬에서만 삭제
             schedules.value = schedules.value.filter { it.id != scheduleId }
+            return
+        }
+
+        // 삭제할 스케줄 정보를 먼저 저장 (동기화 이벤트 전송용)
+        val scheduleToDelete = schedules.value.find { it.id == scheduleId }
+
+        // 낙관적 업데이트: 즉시 UI에서 제거
+        schedules.value = schedules.value.filter { it.id != scheduleId }
+        Log.d("ScheduleRepository", "✅ Deleted schedule optimistically: $scheduleId (serverId: $serverId)")
+
+        try {
+            eventService.deleteEvent(serverId)
+            Log.d("ScheduleRepository", "✅ Deleted event on server: $serverId")
+
+            // 매핑 제거
+            scheduleIdMap.remove(scheduleId)
+
+            // WebSocket을 통해 파트너에게 삭제 이벤트 전송 (서버가 자동으로 브로드캐스트하므로 필요 없을 수 있음)
+            scheduleToDelete?.let { schedule ->
+                val scheduleDto = ScheduleDto(
+                    id = serverId,
+                    title = schedule.title,
+                    date = schedule.date.toString(),
+                    time = schedule.time,
+                    colorHex = schedule.colorHex,
+                    description = schedule.description
+                )
+                chatWebSocketClient.sendScheduleSyncEvent("DELETED", scheduleDto)
+                Log.d("ScheduleRepository", "📤 Sent delete sync event for: ${schedule.title}")
+            }
+        } catch (e: Exception) {
+            Log.e("ScheduleRepository", "❌ Failed to delete schedule on server: ${e.message}", e)
+            // 에러 발생해도 낙관적 업데이트 유지 (이미 삭제됨)
         }
     }
 
     override suspend fun refresh() {
         refreshSchedules()
+    }
+
+    /**
+     * WebSocket을 통한 일정 동기화 이벤트 처리
+     * 백엔드에서 id는 UUID(String)로 전송되므로 hashCode()로 Int 변환
+     */
+    override fun handleScheduleSync(message: ScheduleSyncMessage) {
+        Log.d("ScheduleRepository", "📨 Handling schedule sync: ${message.eventType} - ${message.schedule.title}")
+        Log.d("ScheduleRepository", "Schedule ID (UUID): ${message.schedule.id}")
+
+        // UUID String을 Int로 변환 (기존 ID 체계와 호환)
+        val scheduleId = message.schedule.id.hashCode()
+
+        when (message.eventType) {
+            com.ieum.data.websocket.ScheduleEventType.ADDED -> {
+                // 일정 추가됨
+                // ID 매핑 저장
+                scheduleIdMap[scheduleId] = message.schedule.id
+
+                val newSchedule = Schedule(
+                    id = scheduleId,
+                    title = message.schedule.title,
+                    date = LocalDate.parse(message.schedule.date),
+                    time = message.schedule.time ?: "00:00",
+                    colorHex = message.schedule.colorHex ?: "#FF6B9D",
+                    isShared = true,
+                    description = message.schedule.description
+                )
+
+                // 중복 체크 후 추가
+                val existingIds = schedules.value.map { it.id }.toSet()
+                if (newSchedule.id !in existingIds) {
+                    schedules.value = schedules.value + newSchedule
+                    Log.d("ScheduleRepository", "✅ Added schedule via WebSocket: ${newSchedule.title}")
+                } else {
+                    Log.d("ScheduleRepository", "⚠️ Schedule already exists (duplicate): ${newSchedule.title}")
+                }
+            }
+
+            com.ieum.data.websocket.ScheduleEventType.UPDATED -> {
+                // 일정 수정됨
+                // ID 매핑 업데이트
+                scheduleIdMap[scheduleId] = message.schedule.id
+
+                val updatedSchedule = Schedule(
+                    id = scheduleId,
+                    title = message.schedule.title,
+                    date = LocalDate.parse(message.schedule.date),
+                    time = message.schedule.time ?: "00:00",
+                    colorHex = message.schedule.colorHex ?: "#FF6B9D",
+                    isShared = true,
+                    description = message.schedule.description
+                )
+
+                schedules.value = schedules.value.map {
+                    if (it.id == updatedSchedule.id) updatedSchedule else it
+                }
+                Log.d("ScheduleRepository", "✅ Updated schedule via WebSocket: ${updatedSchedule.title}")
+            }
+
+            com.ieum.data.websocket.ScheduleEventType.DELETED -> {
+                // 일정 삭제됨
+                schedules.value = schedules.value.filter { it.id != scheduleId }
+                // 매핑 제거
+                scheduleIdMap.remove(scheduleId)
+                Log.d("ScheduleRepository", "✅ Deleted schedule via WebSocket: ${message.schedule.title}")
+            }
+        }
     }
 }

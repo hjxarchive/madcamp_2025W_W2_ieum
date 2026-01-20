@@ -73,6 +73,18 @@ class BucketRepositoryImpl @Inject constructor(
         bucketItems.map { list -> list.count { it.isCompleted } }
 
     override suspend fun addBucketItem(title: String, category: BucketCategory) {
+        // 낙관적 업데이트: 즉시 UI에 표시
+        val tempId = ++localIdCounter
+        val tempItem = BucketItem(
+            id = tempId,
+            title = title,
+            category = category,
+            isCompleted = false,
+            createdAt = java.time.LocalDate.now().toString()
+        )
+        bucketItems.value = bucketItems.value + tempItem
+        Log.d("BucketRepository", "Added bucket optimistically: $title")
+
         try {
             val request = BucketRequest(
                 title = title,
@@ -80,20 +92,20 @@ class BucketRepositoryImpl @Inject constructor(
                 category = mapCategoryToServer(category)
             )
             val response = bucketService.createBucket(request)
-            Log.d("BucketRepository", "Created bucket: ${response.id}")
+            Log.d("BucketRepository", "Created bucket on server: ${response.id}")
 
-            refreshBuckets()
+            // 서버 ID로 매핑 저장
+            val serverId = response.id
+            val serverHashId = serverId.hashCode().toLong()
+            bucketIdMap[serverHashId] = serverId
+
+            // 임시 ID를 서버 ID로 업데이트
+            bucketItems.value = bucketItems.value.map {
+                if (it.id == tempId) it.copy(id = serverHashId) else it
+            }
         } catch (e: Exception) {
-            Log.e("BucketRepository", "Failed to add bucket", e)
-            // Fallback to local
-            val newItem = BucketItem(
-                id = ++localIdCounter,
-                title = title,
-                category = category,
-                isCompleted = false,
-                createdAt = java.time.LocalDate.now().toString()
-            )
-            bucketItems.value = bucketItems.value + newItem
+            Log.e("BucketRepository", "Failed to add bucket to server", e)
+            // 에러 발생 시 낙관적 업데이트는 유지
         }
     }
 
@@ -159,5 +171,74 @@ class BucketRepositoryImpl @Inject constructor(
 
     override suspend fun refresh() {
         refreshBuckets()
+    }
+
+    /**
+     * WebSocket을 통한 버킷 동기화 이벤트 처리
+     * 백엔드에서 id는 UUID(String)로 전송되므로 hashCode()로 Long 변환
+     */
+    override fun handleBucketSync(message: com.ieum.data.websocket.BucketSyncMessage) {
+        Log.d("BucketRepository", "📨 Handling bucket sync: ${message.eventType} - ${message.bucket.title}")
+        Log.d("BucketRepository", "Bucket ID (UUID): ${message.bucket.id}")
+
+        // UUID String을 Long으로 변환 (기존 ID 체계와 호환)
+        val bucketId = message.bucket.id.hashCode().toLong()
+
+        when (message.eventType) {
+            com.ieum.data.websocket.BucketEventType.ADDED -> {
+                val newItem = BucketItem(
+                    id = bucketId,
+                    title = message.bucket.title,
+                    category = mapCategoryFromServer(message.bucket.category),
+                    isCompleted = message.bucket.isCompleted,
+                    createdAt = message.bucket.createdAt.substringBefore("T"),
+                    completedAt = message.bucket.completedAt?.substringBefore("T")
+                )
+
+                // 서버 ID 매핑 저장
+                bucketIdMap[bucketId] = message.bucket.id
+
+                val existingIds = bucketItems.value.map { it.id }.toSet()
+                if (newItem.id !in existingIds) {
+                    bucketItems.value = bucketItems.value + newItem
+                    Log.d("BucketRepository", "✅ Added bucket via WebSocket: ${newItem.title}")
+                } else {
+                    Log.d("BucketRepository", "⚠️ Bucket already exists (duplicate): ${newItem.title}")
+                }
+            }
+
+            com.ieum.data.websocket.BucketEventType.COMPLETED -> {
+                bucketItems.value = bucketItems.value.map {
+                    if (it.id == bucketId) {
+                        it.copy(
+                            isCompleted = message.bucket.isCompleted,
+                            completedAt = message.bucket.completedAt?.substringBefore("T")
+                        )
+                    } else it
+                }
+                Log.d("BucketRepository", "✅ Completed bucket via WebSocket: ${message.bucket.title}")
+            }
+
+            com.ieum.data.websocket.BucketEventType.UPDATED -> {
+                // 버킷 일반 수정 (제목, 카테고리 등)
+                bucketItems.value = bucketItems.value.map {
+                    if (it.id == bucketId) {
+                        it.copy(
+                            title = message.bucket.title,
+                            category = mapCategoryFromServer(message.bucket.category),
+                            isCompleted = message.bucket.isCompleted,
+                            completedAt = message.bucket.completedAt?.substringBefore("T")
+                        )
+                    } else it
+                }
+                Log.d("BucketRepository", "✅ Updated bucket via WebSocket: ${message.bucket.title}")
+            }
+
+            com.ieum.data.websocket.BucketEventType.DELETED -> {
+                bucketItems.value = bucketItems.value.filter { it.id != bucketId }
+                bucketIdMap.remove(bucketId)
+                Log.d("BucketRepository", "✅ Deleted bucket via WebSocket: ${message.bucket.title}")
+            }
+        }
     }
 }

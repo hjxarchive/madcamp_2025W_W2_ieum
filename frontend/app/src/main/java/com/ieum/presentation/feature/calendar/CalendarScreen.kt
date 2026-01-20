@@ -42,6 +42,7 @@ fun CalendarScreen(
     viewModel: CalendarViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
 
     var showFabMenu by remember { mutableStateOf(false) }
     var activeSheetType by remember { mutableStateOf<String?>(null) }
@@ -52,6 +53,19 @@ fun CalendarScreen(
     var itemToDelete by remember { mutableStateOf<com.ieum.domain.model.BucketItem?>(null) }
     var anniversaryToDelete by remember { mutableStateOf<Anniversary?>(null) }
     var selectedSchedule by remember { mutableStateOf<com.ieum.domain.model.Schedule?>(null) }
+
+    // 화면이 다시 활성화될 때 데이터 새로고침 (커플 간 동기화)
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.onScreenResumed()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -256,6 +270,7 @@ fun CalendarScreen(
         CommonAddBottomSheet(
             type = type,
             editingExpense = if (type == "지출") selectedExpense else null,
+            editingSchedule = if (type == "일정") selectedSchedule else null,
             onDismiss = {
                 activeSheetType = null
                 selectedExpense = null
@@ -264,10 +279,13 @@ fun CalendarScreen(
             onConfirm = { title, date, memo, category ->
                 when {
                     selectedSchedule != null -> {
+                        // 수정: 기존 것 삭제 후 새로 추가
+                        viewModel.deleteSchedule(selectedSchedule!!.id)
                         viewModel.addSchedule(title, date, memo)
                     }
                     selectedExpense != null -> {
-                        // 수정 시에도 카테고리 반영 (필요시 viewModel.updateExpense도 고려 가능하나 현재는 addExpense 재사용)
+                        // 수정: 기존 것 삭제 후 새로 추가
+                        viewModel.deleteExpense(selectedExpense!!.id)
                         viewModel.addExpense(title, date, memo, category)
                     }
                     else -> { // 신규 추가 모드
@@ -284,10 +302,9 @@ fun CalendarScreen(
                 selectedExpense = null
             },
             onDelete = {
-                if (type == "일정") {
-                    selectedSchedule?.let { /* viewModel.deleteSchedule(it.id) 구현 필요 */ }
-                } else {
-                    selectedExpense?.let { viewModel.deleteExpense(it.id) }
+                when {
+                    selectedSchedule != null -> viewModel.deleteSchedule(selectedSchedule!!.id)
+                    selectedExpense != null -> viewModel.deleteExpense(selectedExpense!!.id)
                 }
                 activeSheetType = null
                 selectedSchedule = null
@@ -403,6 +420,7 @@ fun BucketCard(
 fun CommonAddBottomSheet(
     type: String,
     editingExpense: com.ieum.domain.model.Expense? = null,
+    editingSchedule: com.ieum.domain.model.Schedule? = null,
     onDismiss: () -> Unit,
     onConfirm: (String, LocalDate, String, com.ieum.domain.model.ExpenseCategory?) -> Unit,
     onDelete: (() -> Unit)? = null
@@ -410,16 +428,24 @@ fun CommonAddBottomSheet(
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    var title by remember { mutableStateOf(editingExpense?.title ?: "") }
-    var memo by remember { mutableStateOf(editingExpense?.amount?.toString() ?: "") }
+    // 수정 모드 여부 판단
+    val isEditMode = editingExpense != null || editingSchedule != null
+
+    var title by remember { mutableStateOf(editingExpense?.title ?: editingSchedule?.title ?: "") }
+    var memo by remember { mutableStateOf(editingExpense?.amount?.toString() ?: editingSchedule?.description ?: "") }
     var selectedCategory by remember { mutableStateOf(editingExpense?.category ?: com.ieum.domain.model.ExpenseCategory.FOOD) }
+    var amountError by remember { mutableStateOf<String?>(null) }
 
     // 날짜 초기값 설정
-    val initialDate = if (editingExpense != null) {
-        try {
-            LocalDate.parse(editingExpense.date, DateTimeFormatter.ofPattern("yyyy.MM.dd"))
-        } catch (e: Exception) { LocalDate.now() }
-    } else LocalDate.now()
+    val initialDate = when {
+        editingExpense != null -> {
+            try {
+                LocalDate.parse(editingExpense.date, DateTimeFormatter.ofPattern("yyyy.MM.dd"))
+            } catch (e: Exception) { LocalDate.now() }
+        }
+        editingSchedule != null -> editingSchedule.date
+        else -> LocalDate.now()
+    }
 
     var selectedDate by remember { mutableStateOf(initialDate) }
 
@@ -453,7 +479,11 @@ fun CommonAddBottomSheet(
                 // 지출 추가 옆에 세부 사항 리스트 (지출일 때만 표시)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = if (editingExpense != null) "지출 내역 상세" else "$type 추가",
+                        text = when {
+                            editingExpense != null -> "지출 내역 상세"
+                            editingSchedule != null -> "일정 상세"
+                            else -> "$type 추가"
+                        },
                         color = Color(0xFF8D7B68),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
@@ -490,33 +520,39 @@ fun CommonAddBottomSheet(
                     }
                 }
 
-                // 수정 모드일 때만 삭제 버튼 표시
-                if (editingExpense != null) {
+                // 수정 모드일 때만 삭제 버튼 표시 (지출 또는 일정)
+                if (isEditMode) {
                     IconButton(onClick = { onDelete?.invoke() }) {
                         Icon(Icons.Default.Delete, contentDescription = "삭제", tint = Color(0xFFE57373))
                     }
                 }
             }
 
-            TextField(
-                value = title,
-                onValueChange = { title = it },
-                placeholder = { Text("제목을 입력하세요", color = Color(0xFFC1B4A5)) },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    focusedTextColor = Color(0xFF5A3E2B),
-                    unfocusedTextColor = Color(0xFF5A3E2B)
-                ),
-                textStyle = LocalTextStyle.current.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            )
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+                if (title.isEmpty()) {
+                    Text(
+                        text = "제목을 입력하세요",
+                        color = Color(0xFFC1B4A5),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                androidx.compose.foundation.text.BasicTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = Color(0xFF5A3E2B),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             HorizontalDivider(color = Color(0xFFF0E5D8))
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { datePickerDialog.show() }.padding(vertical = 12.dp),
@@ -527,28 +563,72 @@ fun CommonAddBottomSheet(
                 Text(text = "${selectedDate.year}년 ${selectedDate.monthValue}월 ${selectedDate.dayOfMonth}일", color = Color(0xFF5A3E2B), fontSize = 16.sp)
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFA68A64), modifier = Modifier.size(20.dp).padding(top = 4.dp))
-                Spacer(Modifier.width(16.dp))
-                TextField(
-                    value = memo,
-                    onValueChange = { memo = it },
-                    placeholder = {
-                        Text(text = if (type == "지출") "금액을 입력하세요" else "메모를 입력하세요", color = Color(0xFFC1B4A5))
-                    },
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        focusedTextColor = Color(0xFF5A3E2B),
-                        unfocusedTextColor = Color(0xFF5A3E2B)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFA68A64), modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(16.dp))
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        if (memo.isEmpty()) {
+                            Text(
+                                text = if (type == "지출") "금액을 입력하세요" else "메모를 입력하세요",
+                                color = Color(0xFFC1B4A5),
+                                fontSize = 16.sp
+                            )
+                        }
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = memo,
+                            onValueChange = { newValue ->
+                                if (type == "지출") {
+                                    // 지출일 때는 숫자만 허용
+                                    if (newValue.isEmpty()) {
+                                        memo = newValue
+                                        amountError = null
+                                    } else if (newValue.all { it.isDigit() }) {
+                                        memo = newValue
+                                        amountError = null
+                                    } else {
+                                        amountError = "숫자만 입력해주세요"
+                                    }
+                                } else {
+                                    memo = newValue
+                                }
+                            },
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                color = Color(0xFF5A3E2B),
+                                fontSize = 16.sp
+                            ),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = if (type == "지출") androidx.compose.ui.text.input.KeyboardType.Number else androidx.compose.ui.text.input.KeyboardType.Text
+                            )
+                        )
+                    }
+                }
+
+                // 에러 메시지 표시
+                if (amountError != null && type == "지출") {
+                    Row(
+                        modifier = Modifier.padding(start = 36.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Error,
+                            contentDescription = null,
+                            tint = Color(0xFFE57373),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = amountError!!,
+                            color = Color(0xFFE57373),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
             }
 
             Spacer(Modifier.height(32.dp))
@@ -565,7 +645,7 @@ fun CommonAddBottomSheet(
                     shape = CircleShape,
                     elevation = FloatingActionButtonDefaults.elevation(0.dp)
                 ) {
-                    Icon(if (editingExpense != null) Icons.Default.Edit else Icons.Default.Check, contentDescription = null)
+                    Icon(if (isEditMode) Icons.Default.Edit else Icons.Default.Check, contentDescription = null)
                 }
             }
         }

@@ -1,5 +1,6 @@
 package com.ieum.domain.repository
 
+import com.ieum.data.websocket.FinanceSyncMessage
 import com.ieum.domain.model.Budget
 import com.ieum.domain.model.Expense
 import com.ieum.domain.model.ExpenseCategory
@@ -15,4 +16,7 @@ interface FinanceRepository {
     suspend fun addExpense(expense: Expense)
     suspend fun deleteExpense(expenseId: Long)
     suspend fun refresh()
+
+    // 실시간 동기화
+    fun handleFinanceSync(message: FinanceSyncMessage)
 }

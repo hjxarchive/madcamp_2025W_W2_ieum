@@ -8,6 +8,9 @@ import com.ieum.data.crypto.EncryptedData
 import com.ieum.data.crypto.KeyStorageManager
 import com.ieum.data.websocket.ChatEventListener
 import com.ieum.data.websocket.ChatWebSocketClient
+import com.ieum.data.websocket.ScheduleSyncMessage
+import com.ieum.data.websocket.BucketSyncMessage
+import com.ieum.data.websocket.FinanceSyncMessage
 import com.ieum.data.websocket.WebSocketE2EEMessageResponse
 import com.ieum.data.websocket.WebSocketMessageResponse
 import com.ieum.domain.model.ChatMessage
@@ -15,6 +18,9 @@ import com.ieum.domain.model.MessageType
 import com.ieum.domain.repository.AuthRepository
 import com.ieum.domain.repository.ChatConnectionState
 import com.ieum.domain.repository.ChatRepository
+import com.ieum.domain.repository.ScheduleRepository
+import com.ieum.domain.repository.BucketRepository
+import com.ieum.domain.repository.FinanceRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +42,10 @@ class ChatRepositoryImpl @Inject constructor(
     private val coupleService: CoupleService,
     private val chatService: ChatService,
     private val cryptoManager: CryptoManager,
-    private val keyStorageManager: KeyStorageManager
+    private val keyStorageManager: KeyStorageManager,
+    private val scheduleRepository: ScheduleRepository,
+    private val bucketRepository: BucketRepository,
+    private val financeRepository: FinanceRepository
 ) : ChatRepository {
 
     companion object {
@@ -112,6 +121,47 @@ class ChatRepositoryImpl @Inject constructor(
 
         override fun onMessageSent(tempId: String?) {
             Log.d(TAG, "Message sent: $tempId")
+        }
+
+        // 실시간 동기화 이벤트 (Repository로 전달)
+        // 자신이 만든 이벤트는 이미 낙관적 업데이트로 처리되었으므로 스킵
+        override fun onScheduleSync(message: ScheduleSyncMessage) {
+            Log.d(TAG, "📨 Schedule sync received: ${message.eventType} - ${message.schedule.title}")
+            Log.d(TAG, "   Message userId: ${message.userId}, currentUserId: $currentUserId")
+
+            // 자신의 이벤트는 스킵 (이미 낙관적 업데이트로 추가됨)
+            if (message.userId == currentUserId) {
+                Log.d(TAG, "⏭️ Skipping own schedule event (already added optimistically)")
+                return
+            }
+
+            scheduleRepository.handleScheduleSync(message)
+        }
+
+        override fun onBucketSync(message: BucketSyncMessage) {
+            Log.d(TAG, "📨 Bucket sync received: ${message.eventType} - ${message.bucket.title}")
+            Log.d(TAG, "   Message userId: ${message.userId}, currentUserId: $currentUserId")
+
+            // 자신의 이벤트는 스킵 (이미 낙관적 업데이트로 추가됨)
+            if (message.userId == currentUserId) {
+                Log.d(TAG, "⏭️ Skipping own bucket event (already added optimistically)")
+                return
+            }
+
+            bucketRepository.handleBucketSync(message)
+        }
+
+        override fun onFinanceSync(message: FinanceSyncMessage) {
+            Log.d(TAG, "📨 Finance sync received: ${message.eventType}")
+            Log.d(TAG, "   Message userId: ${message.userId}, currentUserId: $currentUserId")
+
+            // 자신의 이벤트는 스킵 (이미 낙관적 업데이트로 추가됨)
+            if (message.userId == currentUserId) {
+                Log.d(TAG, "⏭️ Skipping own finance event (already added optimistically)")
+                return
+            }
+
+            financeRepository.handleFinanceSync(message)
         }
     }
 

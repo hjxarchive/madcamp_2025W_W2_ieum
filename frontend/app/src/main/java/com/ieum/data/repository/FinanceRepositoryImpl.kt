@@ -132,6 +132,10 @@ class FinanceRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setBudget(amount: Int) {
+        // 낙관적 업데이트: 즉시 UI에 표시
+        budgetAmount.value = amount
+        Log.d("FinanceRepository", "Set budget optimistically: $amount")
+
         try {
             val currentMonth = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
             val request = BudgetRequest(
@@ -145,16 +149,20 @@ class FinanceRepositoryImpl @Inject constructor(
                 )
             )
             budgetService.setBudget(currentMonth, request)
-            Log.d("FinanceRepository", "Set budget: $amount")
-
-            budgetAmount.value = amount
+            Log.d("FinanceRepository", "Set budget on server: $amount")
         } catch (e: Exception) {
-            Log.e("FinanceRepository", "Failed to set budget", e)
-            budgetAmount.value = amount
+            Log.e("FinanceRepository", "Failed to set budget on server", e)
+            // 에러 발생 시 낙관적 업데이트는 유지
         }
     }
 
     override suspend fun addExpense(expense: Expense) {
+        // 낙관적 업데이트: 즉시 UI에 표시
+        val tempId = (++localIdCounter).toString()
+        val tempExpense = expense.copy(id = tempId)
+        expenses.value = expenses.value + tempExpense
+        Log.d("FinanceRepository", "Added expense optimistically: ${expense.title}")
+
         try {
             val request = ExpenseRequest(
                 amount = expense.amount.toDouble(),
@@ -164,37 +172,98 @@ class FinanceRepositoryImpl @Inject constructor(
                 paidBy = "ME"
             )
             val response = expenseService.createExpense(request)
-            Log.d("FinanceRepository", "Created expense: ${response.id}")
+            Log.d("FinanceRepository", "Created expense on server: ${response.id}")
 
-            refreshExpenses()
+            // 임시 ID를 서버 ID로 업데이트
+            expenses.value = expenses.value.map {
+                if (it.id == tempId) it.copy(id = response.id) else it
+            }
         } catch (e: Exception) {
-            Log.e("FinanceRepository", "Failed to add expense", e)
-            // Fallback to local
-            val newExpense = expense.copy(id = (++localIdCounter).toString())
-            expenses.value = expenses.value + newExpense
+            Log.e("FinanceRepository", "Failed to add expense to server", e)
+            // 에러 발생 시 낙관적 업데이트는 유지
         }
     }
 
     override suspend fun deleteExpense(expenseId: Long) {
+        // 낙관적 업데이트: 즉시 UI에서 제거
+        expenses.value = expenses.value.filter { it.id != expenseId.toString() }
+        Log.d("FinanceRepository", "✅ Deleted expense optimistically: $expenseId")
+
         try {
             val serverId = expenseIdMap[expenseId]
             if (serverId != null) {
                 expenseService.deleteExpense(serverId)
-                Log.d("FinanceRepository", "Deleted expense: $serverId")
+                Log.d("FinanceRepository", "✅ Deleted expense on server: $serverId")
                 expenseIdMap.remove(expenseId)
-
-                refreshExpenses()
-            } else {
-                expenses.value = expenses.value.filter { it.id != expenseId.toString() }
             }
         } catch (e: Exception) {
-            Log.e("FinanceRepository", "Failed to delete expense", e)
-            expenses.value = expenses.value.filter { it.id != expenseId.toString() }
+            Log.e("FinanceRepository", "Failed to delete expense on server", e)
+            // 에러 발생해도 낙관적 업데이트 유지 (이미 삭제됨)
         }
     }
 
     override suspend fun refresh() {
         refreshExpenses()
         refreshBudget()
+    }
+
+    /**
+     * WebSocket을 통한 재무 동기화 이벤트 처리
+     */
+    override fun handleFinanceSync(message: com.ieum.data.websocket.FinanceSyncMessage) {
+        Log.d("FinanceRepository", "📨 Handling finance sync: ${message.eventType}")
+
+        when (message.eventType) {
+            com.ieum.data.websocket.FinanceEventType.BUDGET_UPDATED -> {
+                message.budget?.let { budgetDto ->
+                    budgetAmount.value = budgetDto.monthlyBudget
+                    Log.d("FinanceRepository", "✅ Updated budget via WebSocket: ${budgetDto.monthlyBudget}")
+                }
+            }
+
+            com.ieum.data.websocket.FinanceEventType.EXPENSE_ADDED -> {
+                message.expense?.let { expenseDto ->
+                    val newExpense = Expense(
+                        id = expenseDto.id,
+                        title = expenseDto.title,
+                        category = mapCategoryFromServer(expenseDto.category),
+                        amount = expenseDto.amount,
+                        date = expenseDto.date.replace("-", ".")
+                    )
+
+                    val existingIds = expenses.value.map { it.id }.toSet()
+                    if (newExpense.id !in existingIds) {
+                        expenses.value = expenses.value + newExpense
+                        Log.d("FinanceRepository", "✅ Added expense via WebSocket: ${newExpense.title}")
+                    } else {
+                        Log.d("FinanceRepository", "⚠️ Expense already exists (duplicate): ${newExpense.title}")
+                    }
+                }
+            }
+
+            com.ieum.data.websocket.FinanceEventType.EXPENSE_UPDATED -> {
+                message.expense?.let { expenseDto ->
+                    val updatedExpense = Expense(
+                        id = expenseDto.id,
+                        title = expenseDto.title,
+                        category = mapCategoryFromServer(expenseDto.category),
+                        amount = expenseDto.amount,
+                        date = expenseDto.date.replace("-", ".")
+                    )
+
+                    expenses.value = expenses.value.map { existing ->
+                        if (existing.id == updatedExpense.id) updatedExpense else existing
+                    }
+                    Log.d("FinanceRepository", "✅ Updated expense via WebSocket: ${updatedExpense.title}")
+                }
+            }
+
+            com.ieum.data.websocket.FinanceEventType.EXPENSE_DELETED -> {
+                message.expense?.let { expenseDto ->
+                    expenses.value = expenses.value.filter { it.id != expenseDto.id }
+                    Log.d("FinanceRepository", "✅ Deleted expense via WebSocket: ${expenseDto.title}")
+                }
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.ieum.domain.repository
 
+import com.ieum.data.websocket.ScheduleSyncMessage
 import com.ieum.domain.model.Anniversary
 import com.ieum.domain.model.Schedule
 import kotlinx.coroutines.flow.Flow
@@ -17,4 +18,7 @@ interface ScheduleRepository {
     suspend fun updateSchedule(schedule: Schedule)
     suspend fun deleteSchedule(scheduleId: Int)
     suspend fun refresh()
+
+    // 실시간 동기화
+    fun handleScheduleSync(message: ScheduleSyncMessage)
 }

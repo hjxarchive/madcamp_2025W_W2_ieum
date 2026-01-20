@@ -15,6 +15,9 @@ data class CalendarUiState(
     // 추가된 필드들
     val bucketList: List<BucketItem> = emptyList(),
     val expenses: List<com.ieum.domain.model.Expense> = emptyList(),  // 지출 데이터
+    // 이번 달 재무 정보 (실시간 동기화)
+    val monthlySpent: Int = 0,
+    val totalBudget: Int = 500000,
     val isLoading: Boolean = false,
     val error: String? = null
 )

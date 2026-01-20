@@ -31,6 +31,13 @@ class CalendarViewModel @Inject constructor(
         observeBucketList()
     }
 
+    /**
+     * 화면 활성화 시 데이터 새로고침 (커플 간 동기화용)
+     */
+    fun onScreenResumed() {
+        refreshAllData()
+    }
+
     private fun refreshAllData() {
         viewModelScope.launch {
             scheduleRepository.refresh()
@@ -45,9 +52,31 @@ class CalendarViewModel @Inject constructor(
     }
 
     private fun observeExpenses() {
+        // 지출 내역 관찰 + 이번 달 합계 계산
         viewModelScope.launch {
-            financeRepository.getExpenses().collect { list ->
-                _uiState.update { it.copy(expenses = list) }
+            financeRepository.getExpenses().collect { expenses ->
+                val currentMonth = java.time.LocalDate.now().monthValue
+                val currentYear = java.time.LocalDate.now().year
+
+                // 이번 달 지출만 필터링하여 합계 계산
+                val monthlySpent = expenses.filter { expense ->
+                    val dateParts = expense.date.split(".")
+                    if (dateParts.size == 3) {
+                        dateParts[0].toInt() == currentYear && dateParts[1].toInt() == currentMonth
+                    } else false
+                }.sumOf { it.amount }
+
+                _uiState.update { it.copy(
+                    expenses = expenses,
+                    monthlySpent = monthlySpent
+                ) }
+            }
+        }
+
+        // 예산 관찰
+        viewModelScope.launch {
+            financeRepository.getBudget().collect { budget ->
+                _uiState.update { it.copy(totalBudget = budget.monthlyBudget) }
             }
         }
     }
@@ -55,8 +84,9 @@ class CalendarViewModel @Inject constructor(
     private fun observeSchedules() {
         viewModelScope.launch {
             scheduleRepository.getSchedules().collect { list ->
-                _uiState.update { currentState -> // it 대신 currentState 사용
-                    currentState.copy( // it.copy 대신 currentState.copy 사용
+                android.util.Log.d("CalendarViewModel", "📅 Schedules updated: ${list.size} items")
+                _uiState.update { currentState ->
+                    currentState.copy(
                         schedules = list,
                         selectedDateSchedules = list.filter { s -> s.date == currentState.selectedDate }
                     )
@@ -69,6 +99,13 @@ class CalendarViewModel @Inject constructor(
         viewModelScope.launch {
             // Repository에서 Long을 요구한다면 .toLong()으로 변환하여 호출
             financeRepository.deleteExpense(expenseId.toLong())
+        }
+    }
+
+    fun deleteSchedule(scheduleId: Int) {
+        viewModelScope.launch {
+            android.util.Log.d("CalendarViewModel", "🗑️ Deleting schedule: $scheduleId")
+            scheduleRepository.deleteSchedule(scheduleId)
         }
     }
 

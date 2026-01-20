@@ -2,6 +2,7 @@ package com.ieum.presentation.feature.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ieum.domain.repository.ChatRepository
 import com.ieum.domain.repository.FinanceRepository
 import com.ieum.domain.usecase.schedule.GetAnniversariesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,16 +20,27 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val financeRepository: FinanceRepository,
     private val getAnniversariesUseCase: GetAnniversariesUseCase,
-    private val userRepository: com.ieum.domain.repository.UserRepository
+    private val userRepository: com.ieum.domain.repository.UserRepository,
+    private val chatRepository: ChatRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
+        connectWebSocket()
         refreshData()
         observeUserData()
         loadEvents()
         observeFinanceData()
+    }
+
+    /**
+     * WebSocket 연결 (앱 전체 실시간 동기화용)
+     */
+    private fun connectWebSocket() {
+        viewModelScope.launch {
+            chatRepository.connectWebSocket()
+        }
     }
 
     private fun refreshData() {

@@ -140,7 +140,7 @@ class ChatWebSocketClient @Inject constructor(
         Log.d(TAG, "Couple ID: $currentCoupleId")
 
         try {
-            // 일반 메시지 구독
+            // 채팅 메시지 구독
             Log.d(TAG, "Subscribing to messages...")
             subscribeToMessages(currentCoupleId)
 
@@ -155,6 +155,16 @@ class ChatWebSocketClient @Inject constructor(
             // 타이핑 인디케이터 구독
             Log.d(TAG, "Subscribing to typing indicator...")
             subscribeToTypingIndicator(currentCoupleId)
+
+            // 실시간 동기화 구독
+            Log.d(TAG, "Subscribing to schedule sync...")
+            subscribeToScheduleSync(currentCoupleId)
+
+            Log.d(TAG, "Subscribing to bucket sync...")
+            subscribeToBucketSync(currentCoupleId)
+
+            Log.d(TAG, "Subscribing to finance sync...")
+            subscribeToFinanceSync(currentCoupleId)
 
             Log.d(TAG, "✅ All subscriptions initiated")
         } catch (e: Exception) {
@@ -283,6 +293,101 @@ class ChatWebSocketClient @Inject constructor(
         disposable?.let {
             disposables.add(it)
             Log.d(TAG, "✅ Added typing indicator subscription disposable")
+        }
+    }
+
+    /**
+     * 일정 동기화 구독
+     */
+    private fun subscribeToScheduleSync(coupleId: String) {
+        val topic = "/topic/couple/$coupleId/schedule"
+        Log.d(TAG, "Subscribing to topic: $topic")
+
+        val disposable = stompClient?.topic(topic)
+            ?.subscribeOn(Schedulers.io())
+            ?.observeOn(AndroidSchedulers.mainThread())
+            ?.subscribe({ stompMessage ->
+                try {
+                    Log.d(TAG, "📨 Raw schedule message received: ${stompMessage.payload}")
+                    val message = gson.fromJson(stompMessage.payload, ScheduleSyncMessage::class.java)
+                    Log.d(TAG, "✅ Received schedule sync: ${message.eventType} - ${message.schedule.title}")
+                    listener?.onScheduleSync(message)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed to parse schedule sync: ${e.message}", e)
+                    Log.e(TAG, "❌ Raw payload was: ${stompMessage.payload}")
+                }
+            }, { error ->
+                Log.e(TAG, "❌ Schedule sync subscription error for $topic", error)
+                listener?.onError(error)
+            }, {
+                Log.d(TAG, "✅ Successfully subscribed to $topic")
+            })
+
+        disposable?.let {
+            disposables.add(it)
+            Log.d(TAG, "✅ Added schedule sync subscription disposable")
+        }
+    }
+
+    /**
+     * 버킷리스트 동기화 구독
+     */
+    private fun subscribeToBucketSync(coupleId: String) {
+        val topic = "/topic/couple/$coupleId/bucket"
+        Log.d(TAG, "Subscribing to topic: $topic")
+
+        val disposable = stompClient?.topic(topic)
+            ?.subscribeOn(Schedulers.io())
+            ?.observeOn(AndroidSchedulers.mainThread())
+            ?.subscribe({ stompMessage ->
+                try {
+                    val message = gson.fromJson(stompMessage.payload, BucketSyncMessage::class.java)
+                    Log.d(TAG, "✅ Received bucket sync: ${message.eventType} - ${message.bucket.title}")
+                    listener?.onBucketSync(message)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed to parse bucket sync", e)
+                }
+            }, { error ->
+                Log.e(TAG, "❌ Bucket sync subscription error for $topic", error)
+                listener?.onError(error)
+            }, {
+                Log.d(TAG, "✅ Successfully subscribed to $topic")
+            })
+
+        disposable?.let {
+            disposables.add(it)
+            Log.d(TAG, "✅ Added bucket sync subscription disposable")
+        }
+    }
+
+    /**
+     * 재무 동기화 구독
+     */
+    private fun subscribeToFinanceSync(coupleId: String) {
+        val topic = "/topic/couple/$coupleId/finance"
+        Log.d(TAG, "Subscribing to topic: $topic")
+
+        val disposable = stompClient?.topic(topic)
+            ?.subscribeOn(Schedulers.io())
+            ?.observeOn(AndroidSchedulers.mainThread())
+            ?.subscribe({ stompMessage ->
+                try {
+                    val message = gson.fromJson(stompMessage.payload, FinanceSyncMessage::class.java)
+                    Log.d(TAG, "✅ Received finance sync: ${message.eventType}")
+                    listener?.onFinanceSync(message)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Failed to parse finance sync", e)
+                }
+            }, { error ->
+                Log.e(TAG, "❌ Finance sync subscription error for $topic", error)
+                listener?.onError(error)
+            }, {
+                Log.d(TAG, "✅ Successfully subscribed to $topic")
+            })
+
+        disposable?.let {
+            disposables.add(it)
+            Log.d(TAG, "✅ Added finance sync subscription disposable")
         }
     }
 
@@ -424,6 +529,41 @@ class ChatWebSocketClient @Inject constructor(
                 Log.d(TAG, "Typing indicator sent: $isTyping")
             }, { error ->
                 Log.e(TAG, "Failed to send typing indicator", error)
+            })
+
+        disposable?.let { disposables.add(it) }
+    }
+
+    /**
+     * 일정 동기화 이벤트 전송 (추가/수정/삭제)
+     */
+    fun sendScheduleSyncEvent(eventType: String, schedule: ScheduleDto, userId: String? = null) {
+        if (!isConnected) {
+            Log.e(TAG, "❌ Cannot send schedule sync: WebSocket not connected")
+            return
+        }
+
+        val currentCoupleId = coupleId ?: run {
+            Log.e(TAG, "❌ Cannot send schedule sync: coupleId is null")
+            return
+        }
+
+        val message = mapOf(
+            "eventType" to eventType,
+            "schedule" to schedule,
+            "userId" to (userId ?: "unknown"),
+            "timestamp" to java.time.Instant.now().toString()
+        )
+        val payload = gson.toJson(message)
+        Log.d(TAG, "📤 Sending schedule sync to /app/sync/$currentCoupleId/schedule: $payload")
+
+        val disposable = stompClient?.send("/app/sync/$currentCoupleId/schedule", payload)
+            ?.subscribeOn(Schedulers.io())
+            ?.observeOn(AndroidSchedulers.mainThread())
+            ?.subscribe({
+                Log.d(TAG, "✅ Schedule sync event sent: $eventType - ${schedule.title}")
+            }, { error ->
+                Log.e(TAG, "❌ Failed to send schedule sync event", error)
             })
 
         disposable?.let { disposables.add(it) }
