@@ -195,6 +195,7 @@ private fun MapView(
                 memory = memory,
                 onClick = { onMemoryClick(memory) },
                 modifier = Modifier
+<<<<<<< Updated upstream
                     .align(Alignment.TopStart)
                     .offset(
                         x = (50 + index * 80).dp,
@@ -320,6 +321,12 @@ private fun MemoryPreviewCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(memory.color.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
+=======
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 100.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.End
+>>>>>>> Stashed changes
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Image,
@@ -365,6 +372,7 @@ private fun GalleryView(
         modifier = Modifier
             .fillMaxSize()
             .padding(2.dp),
+        contentPadding = PaddingValues(bottom = 100.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
