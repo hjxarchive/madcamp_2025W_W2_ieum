@@ -219,15 +219,10 @@ fun MainScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-<<<<<<< Updated upstream
-                // 바텀 바가 숨겨질 때는 패딩을 주지 않아 화면을 꽉 채우게 합니다.
-                .padding(if (selectedItem != 0 && selectedItem != 2) paddingValues else PaddingValues(0.dp))
-=======
                 .padding(
-                    top = if (selectedItem != 3 && selectedItem != 2) paddingValues.calculateTopPadding() else 0.dp,
+                    top = if (selectedItem != 0 && selectedItem != 2) paddingValues.calculateTopPadding() else 0.dp,
                     bottom = 0.dp
                 )
->>>>>>> Stashed changes
         ) {
             AnimatedContent(
                 targetState = selectedItem,
@@ -261,15 +256,9 @@ fun IeumBottomNavigation(
     modifier: Modifier = Modifier
 ) {
     NavigationBar(
-<<<<<<< Updated upstream
-        modifier = modifier,
-        containerColor = IeumColors.Surface,
-        tonalElevation = 8.dp
-=======
         modifier = modifier.clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)),
         containerColor = Color(0xFFECD4CD).copy(alpha = 0.6f),
         tonalElevation = 0.dp
->>>>>>> Stashed changes
     ) {
         bottomNavItems.forEachIndexed { index, item ->
             NavigationBarItem(

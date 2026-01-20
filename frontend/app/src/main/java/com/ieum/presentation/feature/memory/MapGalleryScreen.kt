@@ -195,7 +195,6 @@ private fun MapView(
                 memory = memory,
                 onClick = { onMemoryClick(memory) },
                 modifier = Modifier
-<<<<<<< Updated upstream
                     .align(Alignment.TopStart)
                     .offset(
                         x = (50 + index * 80).dp,
@@ -209,7 +208,7 @@ private fun MapView(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp)
         ) {
             HorizontalMemoryPreview(
                 memories = memories,
@@ -321,12 +320,7 @@ private fun MemoryPreviewCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(memory.color.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
-=======
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.End
->>>>>>> Stashed changes
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Image,
