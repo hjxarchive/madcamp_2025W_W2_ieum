@@ -81,12 +81,12 @@ fun LoginScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         // 배경 이미지
-//        Image(
-//            // painter = painterResource(id = R.drawable.background2),
-//            contentDescription = null,
-//            modifier = Modifier.fillMaxSize(),
-//            contentScale = ContentScale.Crop
-//        )
+        Image(
+            painter = painterResource(id = R.drawable.background2),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
 
         // 로그인 UI
         Column(

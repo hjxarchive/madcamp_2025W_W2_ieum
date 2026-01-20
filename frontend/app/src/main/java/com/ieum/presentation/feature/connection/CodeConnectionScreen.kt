@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.foundation.text.BasicTextField
 import com.ieum.R
+import com.ieum.presentation.theme.GowunBatangFamily
 
 @Composable
 fun CodeConnectionScreen(
@@ -87,12 +88,12 @@ fun CodeConnectionScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         // 배경 설정
-//        Image(
-//            // painter = painterResource(id = R.drawable.background2),
-//            contentDescription = null,
-//            modifier = Modifier.fillMaxSize(),
-//            contentScale = ContentScale.FillBounds
-//        )
+        Image(
+            painter = painterResource(id = R.drawable.background2),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.FillBounds
+        )
 
         Column(
             modifier = Modifier
@@ -220,7 +221,8 @@ fun CodeConnectionScreen(
                                 fontSize = if (isSmallScreen) 18.sp else 20.sp,
                                 textAlign = TextAlign.Center,
                                 letterSpacing = 4.sp,
-                                color = Color(0xFF5A3E2B)
+                                color = Color(0xFF5A3E2B),
+                                fontFamily = GowunBatangFamily
                             ),
                             cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFF5A3E2B)),
                             decorationBox = { innerTextField ->
@@ -229,7 +231,8 @@ fun CodeConnectionScreen(
                                         Text(
                                             text = "상대방의 코드를 입력하세요",
                                             fontSize = if (isSmallScreen) 14.sp else 16.sp,
-                                            color = Color(0xFF5A3E2B).copy(alpha = 0.3f)
+                                            color = Color(0xFF5A3E2B).copy(alpha = 0.3f),
+                                            fontFamily = GowunBatangFamily
                                         )
                                     }
                                     innerTextField()
@@ -367,9 +370,11 @@ fun SuccessConnectionModal(
                 modifier = Modifier.padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = "💕",
-                    fontSize = 64.sp
+                Image(
+                    painter = painterResource(id = R.drawable.dog),
+                    contentDescription = null,
+                    modifier = Modifier.size(80.dp),
+                    colorFilter = ColorFilter.tint(Color(0xFFE6C8A0).copy(alpha = 0.6f))
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(

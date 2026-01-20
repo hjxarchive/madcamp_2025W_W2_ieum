@@ -59,19 +59,19 @@ fun DashboardContent(
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 배경 이미지 설정
-//        Image(
-//            // painter = painterResource(id = R.drawable.background2),
-//            contentDescription = null,
-//            modifier = Modifier.fillMaxSize(),
-//            contentScale = ContentScale.FillBounds
-//        )
+        Image(
+            painter = painterResource(id = R.drawable.background2),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.FillBounds
+        )
 
         Column(modifier = Modifier.fillMaxSize()) {
             // 상단 헤더
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp, 48.dp, 24.dp, 16.dp),
+                    .padding(24.dp, 36.dp, 24.dp, 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {

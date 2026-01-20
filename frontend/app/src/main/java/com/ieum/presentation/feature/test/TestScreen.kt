@@ -98,12 +98,12 @@ fun TestMainScreen(
     val buttonBeige = Color(0xFFE6C8A0)
 
     Box(modifier = Modifier.fillMaxSize()) {
-//        Image(
-//            // painter = painterResource(id = R.drawable.background2),
-//            contentDescription = null,
-//            modifier = Modifier.fillMaxSize(),
-//            contentScale = ContentScale.Crop
-//        )
+        Image(
+           painter = painterResource(id = R.drawable.background2),
+               contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
 
         when (val state = screenState) {
             is TestScreenState.Intro -> IntroContent(mainBrown, buttonBeige) { viewModel.startTest() }
@@ -269,7 +269,7 @@ fun TestingContent(viewModel: TestViewModel, textColor: Color, btnColor: Color) 
                 ) {
                     // 배경 이미지
                     Image(
-                        painter = painterResource(id = R.drawable.background),
+                        painter = painterResource(id = R.drawable.background2),
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(32.dp)),
                         contentScale = ContentScale.FillBounds,

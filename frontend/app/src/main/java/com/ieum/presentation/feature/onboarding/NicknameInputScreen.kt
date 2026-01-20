@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ieum.R
+import com.ieum.presentation.theme.GowunBatangFamily
 
 @Composable
 fun NicknameInputScreen(
@@ -42,12 +43,12 @@ fun NicknameInputScreen(
         
         Box(modifier = Modifier.fillMaxSize()) {
             // 배경
-//            Image(
-//                // painter = painterResource(id = R.drawable.background2),
-//                contentDescription = null,
-//                modifier = Modifier.fillMaxSize(),
-//                contentScale = ContentScale.Crop
-//            )
+            Image(
+                painter = painterResource(id = R.drawable.background2),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
             
             Column(
                 modifier = Modifier
@@ -109,7 +110,8 @@ fun NicknameInputScreen(
                                 fontSize = (screenWidth.value * 0.06f).sp,
                                 fontWeight = FontWeight.Medium,
                                 color = mainBrown,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                fontFamily = GowunBatangFamily
                             ),
                             cursorBrush = SolidColor(mainBrown),
                             decorationBox = { innerTextField ->
@@ -123,7 +125,8 @@ fun NicknameInputScreen(
                                             fontSize = (screenWidth.value * 0.06f).sp,
                                             fontWeight = FontWeight.Medium,
                                             color = mainBrown.copy(alpha = 0.3f),
-                                            textAlign = TextAlign.Center
+                                            textAlign = TextAlign.Center,
+                                            fontFamily = GowunBatangFamily
                                         )
                                     }
                                     innerTextField()

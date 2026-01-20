@@ -44,10 +44,23 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            // Launch MBTI collection concurrently
+            // Launch MBTI collection from TestRepository concurrently
             launch {
                 testRepository.mbtiResult.collect { mbti ->
-                    _uiState.value = _uiState.value.copy(myMbti = mbti)
+                    Log.d("ProfileViewModel", "TestRepository myMbti 업데이트: $mbti")
+                    if (mbti != null) {
+                        _uiState.value = _uiState.value.copy(myMbti = mbti)
+                    }
+                }
+            }
+            
+            // Also collect partner MBTI from TestRepository
+            launch {
+                testRepository.partnerMbtiResult.collect { partnerMbti ->
+                    Log.d("ProfileViewModel", "TestRepository partnerMbti 업데이트: $partnerMbti")
+                    if (partnerMbti != null) {
+                        _uiState.value = _uiState.value.copy(partnerMbti = partnerMbti)
+                    }
                 }
             }
 
@@ -98,6 +111,14 @@ class ProfileViewModel @Inject constructor(
                         isLoading = false,
                         error = null
                     )
+                    
+                    // Save partner MBTI to TestRepository for local persistence
+                    coupleResponse.partner?.mbtiType?.let { partnerMbti ->
+                        viewModelScope.launch {
+                            testRepository.savePartnerMbtiResult(partnerMbti)
+                            Log.d("ProfileViewModel", "Partner MBTI saved to local: $partnerMbti")
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e("ProfileViewModel", "커플 정보 로드 실패", e)
                     // 커플 정보가 없어도 사용자 정보는 표시
@@ -127,14 +148,23 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val mbtiResult = mbtiService.getCoupleResult()
-                Log.d("ProfileViewModel", "MBTI 결과: myMbti=${mbtiResult.myMbti}, partnerMbti=${mbtiResult.partnerMbti}")
-
+                Log.d("ProfileViewModel", "MBTI API 응답: myMbti=${mbtiResult.myMbti}, partnerMbti=${mbtiResult.partnerMbti}")
+                
+                // Update state with API result, fallback to current values
+                val newMyMbti = mbtiResult.myMbti ?: _uiState.value.myMbti
+                val newPartnerMbti = mbtiResult.partnerMbti ?: _uiState.value.partnerMbti
+                
+                Log.d("ProfileViewModel", "업데이트할 MBTI 값: myMbti=$newMyMbti, partnerMbti=$newPartnerMbti")
+                
                 _uiState.value = _uiState.value.copy(
-                    myMbti = mbtiResult.myMbti ?: _uiState.value.myMbti,
-                    partnerMbti = mbtiResult.partnerMbti ?: _uiState.value.partnerMbti
+                    myMbti = newMyMbti,
+                    partnerMbti = newPartnerMbti
                 )
+                
+                Log.d("ProfileViewModel", "최종 상태: myMbti=${_uiState.value.myMbti}, partnerMbti=${_uiState.value.partnerMbti}")
             } catch (e: Exception) {
                 Log.e("ProfileViewModel", "MBTI 데이터 로드 실패", e)
+                Log.e("ProfileViewModel", "현재 상태 유지: myMbti=${_uiState.value.myMbti}, partnerMbti=${_uiState.value.partnerMbti}")
             }
         }
     }

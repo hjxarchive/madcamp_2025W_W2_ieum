@@ -193,10 +193,10 @@ sealed class BottomNavItem(
 }
 
 val bottomNavItems = listOf(
-    BottomNavItem.Calendar,
+    BottomNavItem.Dashboard,
     BottomNavItem.MapGallery,
     BottomNavItem.Chat,
-    BottomNavItem.Dashboard
+    BottomNavItem.Calendar
 )
 
 /**
@@ -210,15 +210,15 @@ fun MainScreen(
     onNavigateToBudgetPlanning: () -> Unit,
     onNavigateToClicker: () -> Unit
 ) {
-    // 대시보드가 기본 (index 3 - Calendar=0, Map=1, Chat=2, Dashboard=3)
-    var selectedItem by remember { mutableIntStateOf(3) }
+    // 대시보드가 기본 (index 0 - Dashboard=0, Map=1, Chat=2, Calendar=3)
+    var selectedItem by remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = modifier,
         containerColor = Color.Transparent,
         bottomBar = {
-            // ✅ 캘린더 화면(index 0)과 채팅 화면(index 2)이 아닐 때만 바텀 바를 표시합니다.
-            if (selectedItem != 0 && selectedItem != 2) {
+            // ✅ 캘린더 화면(index 3)과 채팅 화면(index 2)이 아닐 때만 바텀 바를 표시합니다.
+            if (selectedItem != 3 && selectedItem != 2) {
                 IeumBottomNavigation(
                     selectedIndex = selectedItem,
                     onItemSelected = { selectedItem = it }
@@ -230,7 +230,7 @@ fun MainScreen(
             modifier = Modifier
                 .fillMaxSize()
                 // 바텀 바가 숨겨질 때는 패딩을 주지 않아 화면을 꽉 채우게 합니다.
-                .padding(if (selectedItem != 0 && selectedItem != 2) paddingValues else PaddingValues(0.dp))
+                .padding(if (selectedItem != 3 && selectedItem != 2) paddingValues else PaddingValues(0.dp))
         ) {
             AnimatedContent(
                 targetState = selectedItem,
@@ -241,12 +241,12 @@ fun MainScreen(
                 label = "screen_transition"
             ) { index ->
                 when (bottomNavItems[index]) {
-                    // ✅ 뒤로 가기 시 다시 대시보드(index 3)로 돌아오도록 설정
-                    BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 3 })
+                    // ✅ 뒤로 가기 시 다시 대시보드(index 0)로 돌아오도록 설정
+                    BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 0 })
                     BottomNavItem.MapGallery -> MapGalleryContent()
-                    BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 3 }, onNavigateToBudgetPlanning = onNavigateToBudgetPlanning)
+                    BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 0 }, onNavigateToBudgetPlanning = onNavigateToBudgetPlanning)
                     BottomNavItem.Dashboard -> DashboardContent(
-                        onNavigateToCalendar = { selectedItem = 0 },
+                        onNavigateToCalendar = { selectedItem = 3 },
                         onNavigateToMyPage = onNavigateToMyPage,
                         onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
                         onNavigateToClicker = onNavigateToClicker
@@ -265,8 +265,8 @@ fun IeumBottomNavigation(
 ) {
     NavigationBar(
         modifier = modifier,
-        containerColor = IeumColors.Surface,
-        tonalElevation = 8.dp
+        containerColor = Color.Transparent,
+        tonalElevation = 0.dp
     ) {
         bottomNavItems.forEachIndexed { index, item ->
             NavigationBarItem(
@@ -280,11 +280,11 @@ fun IeumBottomNavigation(
                 },
                 label = { Text(text = item.title, style = MaterialTheme.typography.labelSmall) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = IeumColors.Primary,
-                    selectedTextColor = IeumColors.Primary,
-                    unselectedIconColor = IeumColors.TextSecondary,
-                    unselectedTextColor = IeumColors.TextSecondary,
-                    indicatorColor = IeumColors.Primary.copy(alpha = 0.1f)
+                    selectedIconColor = Color(0xFF5A3E2B),
+                    selectedTextColor = Color(0xFF5A3E2B),
+                    unselectedIconColor = Color(0xFF5A3E2B).copy(alpha = 0.6f),
+                    unselectedTextColor = Color(0xFF5A3E2B).copy(alpha = 0.6f),
+                    indicatorColor = Color.Transparent
                 )
             )
         }
