@@ -19,6 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val financeRepository: FinanceRepository,
+    private val scheduleRepository: com.ieum.domain.repository.ScheduleRepository,
     private val getAnniversariesUseCase: GetAnniversariesUseCase,
     private val userRepository: com.ieum.domain.repository.UserRepository,
     private val chatRepository: ChatRepository
@@ -46,6 +47,7 @@ class DashboardViewModel @Inject constructor(
     private fun refreshData() {
         viewModelScope.launch {
             financeRepository.refresh()
+            scheduleRepository.refresh()
         }
     }
 
@@ -96,8 +98,11 @@ class DashboardViewModel @Inject constructor(
 
     private fun observeFinanceData() {
         viewModelScope.launch {
-            // Repository에서 전체 지출 내역 Flow를 가져옴
-            financeRepository.getExpenses().collect { expenses ->
+            // 두 Flow를 combine하여 동시에 업데이트 (race condition 방지)
+            kotlinx.coroutines.flow.combine(
+                financeRepository.getExpenses(),
+                financeRepository.getBudget()
+            ) { expenses, budget ->
                 val currentMonth = LocalDate.now().monthValue
                 val currentYear = LocalDate.now().year
 
@@ -109,14 +114,12 @@ class DashboardViewModel @Inject constructor(
                     } else false
                 }.sumOf { it.amount }
 
-                _uiState.update { it.copy(spentAmount = monthlySpent) }
-            }
-        }
-        
-        // Budget 관찰 추가
-        viewModelScope.launch {
-            financeRepository.getBudget().collect { budget ->
-                _uiState.update { it.copy(totalBudget = budget.monthlyBudget) }
+                Pair(monthlySpent, budget.monthlyBudget)
+            }.collect { (monthlySpent, monthlyBudget) ->
+                _uiState.update { it.copy(
+                    spentAmount = monthlySpent,
+                    totalBudget = monthlyBudget
+                ) }
             }
         }
     }

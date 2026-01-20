@@ -42,8 +42,32 @@ fun MainNavigation() {
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // 로그인 성공 시 MBTI 테스트로 이동
+                    // 신규 로그인 시 MBTI 테스트로 이동
                     navController.navigate(Routes.MBTI_TEST) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                },
+                onNavigateToMain = {
+                    // 이미 커플 연결된 사용자 → 메인 화면
+                    navController.navigate(Routes.MAIN) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                },
+                onNavigateToMbti = {
+                    // MBTI 미완료 사용자 → MBTI 테스트
+                    navController.navigate(Routes.MBTI_TEST) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                },
+                onNavigateToOnboarding = {
+                    // 온보딩 미완료 사용자 → 닉네임 입력
+                    navController.navigate(Routes.ONBOARDING_NICKNAME) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                },
+                onNavigateToCodeConnection = {
+                    // 커플 연결 미완료 사용자 → 코드 연결
+                    navController.navigate(Routes.CODE_CONNECTION) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }

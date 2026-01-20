@@ -118,9 +118,26 @@ fun MyPageScreen(
 private fun CoupleProfileSection(uiState: ProfileUiState) {
     val myNickname = uiState.coupleInfo?.user?.nickname ?: "나"
     val partnerNickname = uiState.coupleInfo?.partner?.nickname ?: "파트너"
-    
-    val myMbtiImage = getMbtiImage(uiState.myMbti)
-    val partnerMbtiImage = getMbtiImage(uiState.partnerMbti)
+
+    // fallback: uiState.partnerMbti가 null이거나 빈 문자열이면 coupleInfo.partner.mbti 사용
+    val myMbti = uiState.myMbti?.takeIf { it.isNotEmpty() }
+        ?: uiState.coupleInfo?.user?.mbti?.takeIf { it.isNotEmpty() }
+    val partnerMbti = uiState.partnerMbti?.takeIf { it.isNotEmpty() }
+        ?: uiState.coupleInfo?.partner?.mbti?.takeIf { it.isNotEmpty() }
+
+    // 디버깅 로그
+    android.util.Log.d("MyPageScreen", "=== MBTI 디버깅 ===")
+    android.util.Log.d("MyPageScreen", "uiState.myMbti: ${uiState.myMbti}")
+    android.util.Log.d("MyPageScreen", "uiState.partnerMbti: ${uiState.partnerMbti}")
+    android.util.Log.d("MyPageScreen", "coupleInfo.user.mbti: ${uiState.coupleInfo?.user?.mbti}")
+    android.util.Log.d("MyPageScreen", "coupleInfo.partner.mbti: ${uiState.coupleInfo?.partner?.mbti}")
+    android.util.Log.d("MyPageScreen", "최종 myMbti: $myMbti")
+    android.util.Log.d("MyPageScreen", "최종 partnerMbti: $partnerMbti")
+
+    val myMbtiImage = getMbtiImage(myMbti)
+    val partnerMbtiImage = getMbtiImage(partnerMbti)
+
+    android.util.Log.d("MyPageScreen", "myMbtiImage: $myMbtiImage, partnerMbtiImage: $partnerMbtiImage")
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -202,7 +219,9 @@ private fun CoupleProfileSection(uiState: ProfileUiState) {
 }
 
 private fun getMbtiImage(mbti: String?): Int {
-    return when (mbti) {
+    // 대소문자 무시하여 매칭
+    val normalizedMbti = mbti?.uppercase()
+    return when (normalizedMbti) {
         "MDEP" -> R.drawable.mdep_r
         "MDEF" -> R.drawable.mdef_r
         "MDCP" -> R.drawable.mdcp_r
@@ -225,8 +244,12 @@ private fun getMbtiImage(mbti: String?): Int {
 
 @Composable
 private fun MBTIChemistrySection(uiState: ProfileUiState) {
-    val myMbti = uiState.myMbti
-    val partnerMbti = uiState.partnerMbti
+    // fallback: uiState.partnerMbti가 null이거나 빈 문자열이면 coupleInfo.partner.mbti 사용
+    // 대소문자 정규화하여 ChemistryData와 매칭
+    val myMbti = (uiState.myMbti?.takeIf { it.isNotEmpty() }
+        ?: uiState.coupleInfo?.user?.mbti?.takeIf { it.isNotEmpty() })?.uppercase()
+    val partnerMbti = (uiState.partnerMbti?.takeIf { it.isNotEmpty() }
+        ?: uiState.coupleInfo?.partner?.mbti?.takeIf { it.isNotEmpty() })?.uppercase()
 
     Text(
         text = "우리의 케미",

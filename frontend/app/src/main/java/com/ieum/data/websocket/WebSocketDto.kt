@@ -116,6 +116,9 @@ interface ChatEventListener {
     fun onScheduleSync(message: ScheduleSyncMessage)
     fun onBucketSync(message: BucketSyncMessage)
     fun onFinanceSync(message: FinanceSyncMessage)
+
+    // MBTI 업데이트 이벤트
+    fun onMbtiUpdated(message: MbtiUpdateMessage)
 }
 
 // ==================== 일정 동기화 ====================
@@ -246,4 +249,18 @@ data class ExpenseDto(
     val category: String,
     val amount: Int,
     val date: String   // ISO-8601 format (yyyy-MM-dd)
+)
+
+// ==================== MBTI 동기화 ====================
+
+/**
+ * MBTI 업데이트 메시지
+ * 파트너가 MBTI 테스트를 완료하면 전송됨
+ */
+data class MbtiUpdateMessage(
+    val type: String,           // "MBTI_UPDATED"
+    val userId: String,
+    val userName: String?,
+    val mbtiType: String,
+    val timestamp: String
 )

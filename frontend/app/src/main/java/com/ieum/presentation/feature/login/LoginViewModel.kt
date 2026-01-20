@@ -38,11 +38,17 @@ class LoginViewModel @Inject constructor(
                     result.fold(
                         onSuccess = { user ->
                             Log.d("AutoLogin", "자동 로그인 성공: ${user.email}")
+                            Log.d("AutoLogin", "  - coupleId: ${user.coupleId}")
+                            Log.d("AutoLogin", "  - mbtiType: ${user.mbtiType}")
+                            Log.d("AutoLogin", "  - nickname: ${user.nickname}")
                             _uiState.update {
                                 it.copy(
                                     isLoading = false,
                                     isLoggedIn = true,
-                                    isNewUser = user.nickname == null
+                                    isNewUser = user.nickname == null,
+                                    hasCoupleId = user.coupleId != null,
+                                    hasMbti = user.mbtiType != null,
+                                    hasNickname = user.nickname != null
                                 )
                             }
                         },
@@ -87,6 +93,9 @@ class LoginViewModel @Inject constructor(
                         Log.d("GoogleLogin", "   - accessToken: ${authResponse.accessToken.take(30)}...")
                         Log.d("GoogleLogin", "   - user email: ${authResponse.user.email}")
                         Log.d("GoogleLogin", "   - user id: ${authResponse.user.id}")
+                        Log.d("GoogleLogin", "   - coupleId: ${authResponse.user.coupleId}")
+                        Log.d("GoogleLogin", "   - mbtiType: ${authResponse.user.mbtiType}")
+                        Log.d("GoogleLogin", "   - nickname: ${authResponse.user.nickname}")
 
                         // 토큰 및 사용자 ID 저장
                         authRepository.saveToken(authResponse.accessToken)
@@ -96,7 +105,10 @@ class LoginViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                isNewUser = authResponse.user.nickname == null
+                                isNewUser = authResponse.user.nickname == null,
+                                hasCoupleId = authResponse.user.coupleId != null,
+                                hasMbti = authResponse.user.mbtiType != null,
+                                hasNickname = authResponse.user.nickname != null
                             )
                         }
                         onSuccess()

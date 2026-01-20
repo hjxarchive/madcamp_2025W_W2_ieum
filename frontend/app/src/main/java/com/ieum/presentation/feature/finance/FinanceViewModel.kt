@@ -26,9 +26,11 @@ class FinanceViewModel @Inject constructor(
     val currentMonth: StateFlow<java.time.YearMonth> = _currentMonth.asStateFlow()
 
     // Consumption Screen State
-    // Using a safe timeout/sharing strategy
+    // WhileSubscribed로 변경하여 즉시 업데이트 반영
+    private val sharingStarted = SharingStarted.WhileSubscribed(5000)
+
     val expenses: StateFlow<List<Expense>> = financeRepository.getExpenses()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, sharingStarted, emptyList())
 
     val filteredExpenses: StateFlow<List<Expense>> = combine(expenses, _currentMonth) { list, month ->
         val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd")
@@ -38,11 +40,11 @@ class FinanceViewModel @Inject constructor(
                 java.time.YearMonth.from(date) == month
             } catch (e: Exception) { false }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, sharingStarted, emptyList())
 
     val thisMonthTotal: StateFlow<Int> = filteredExpenses.map { list ->
         list.sumOf { it.amount }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
+    }.stateIn(viewModelScope, sharingStarted, 0)
 
     fun previousMonth() {
         _currentMonth.value = _currentMonth.value.minusMonths(1)
@@ -54,8 +56,8 @@ class FinanceViewModel @Inject constructor(
 
     // Budget State integrated with Repository
     val budget: StateFlow<Int> = financeRepository.getBudget()
-        .map { it.monthlyBudget } // Fixed: Use monthlyBudget instead of amount
-        .stateIn(viewModelScope, SharingStarted.Lazily, 500000)
+        .map { it.monthlyBudget }
+        .stateIn(viewModelScope, sharingStarted, 500000)
 
     private val _isAiSuggesting = MutableStateFlow(false)
     val isAiSuggesting: StateFlow<Boolean> = _isAiSuggesting

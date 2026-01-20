@@ -18,16 +18,21 @@ import com.ieum.domain.model.MessageType
 import com.ieum.domain.repository.AuthRepository
 import com.ieum.domain.repository.ChatConnectionState
 import com.ieum.domain.repository.ChatRepository
+import com.ieum.domain.repository.MbtiUpdateEvent
 import com.ieum.domain.repository.ScheduleRepository
 import com.ieum.domain.repository.BucketRepository
 import com.ieum.domain.repository.FinanceRepository
+import com.ieum.data.websocket.MbtiUpdateMessage
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -65,6 +70,9 @@ class ChatRepositoryImpl @Inject constructor(
 
     private val _isPartnerTyping = MutableStateFlow(false)
     override val isPartnerTyping: StateFlow<Boolean> = _isPartnerTyping.asStateFlow()
+
+    private val _mbtiUpdateEvent = MutableSharedFlow<MbtiUpdateEvent>(replay = 0)
+    override val mbtiUpdateEvent: SharedFlow<MbtiUpdateEvent> = _mbtiUpdateEvent.asSharedFlow()
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
@@ -162,6 +170,27 @@ class ChatRepositoryImpl @Inject constructor(
             }
 
             financeRepository.handleFinanceSync(message)
+        }
+
+        override fun onMbtiUpdated(message: MbtiUpdateMessage) {
+            Log.d(TAG, "📨 MBTI update received: ${message.userName} completed MBTI test - ${message.mbtiType}")
+
+            // 자신의 이벤트는 스킵
+            if (message.userId == currentUserId) {
+                Log.d(TAG, "⏭️ Skipping own MBTI update event")
+                return
+            }
+
+            // MBTI 업데이트 이벤트 발행
+            coroutineScope.launch {
+                _mbtiUpdateEvent.emit(
+                    MbtiUpdateEvent(
+                        userId = message.userId,
+                        userName = message.userName,
+                        mbtiType = message.mbtiType
+                    )
+                )
+            }
         }
     }
 

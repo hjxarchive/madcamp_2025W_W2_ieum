@@ -173,7 +173,7 @@ class ChatWebSocketClient @Inject constructor(
     }
 
     /**
-     * 일반 메시지 구독
+     * 일반 메시지 구독 (채팅 + MBTI 업데이트 등 이벤트 처리)
      */
     private fun subscribeToMessages(coupleId: String) {
         val topic = "/topic/couple/$coupleId"
@@ -184,9 +184,27 @@ class ChatWebSocketClient @Inject constructor(
             ?.observeOn(AndroidSchedulers.mainThread())
             ?.subscribe({ stompMessage ->
                 try {
-                    val message = gson.fromJson(stompMessage.payload, WebSocketMessageResponse::class.java)
-                    Log.d(TAG, "✅ Received message: ${message.id}")
-                    listener?.onMessageReceived(message)
+                    val payload = stompMessage.payload
+                    Log.d(TAG, "📨 Received message on $topic: $payload")
+
+                    // 먼저 타입을 확인하기 위해 Map으로 파싱
+                    val rawMap = gson.fromJson(payload, Map::class.java) as? Map<String, Any>
+                    val messageType = rawMap?.get("type") as? String
+
+                    when (messageType) {
+                        "MBTI_UPDATED" -> {
+                            // MBTI 업데이트 이벤트
+                            val mbtiMessage = gson.fromJson(payload, MbtiUpdateMessage::class.java)
+                            Log.d(TAG, "✅ Received MBTI update: ${mbtiMessage.userName} - ${mbtiMessage.mbtiType}")
+                            listener?.onMbtiUpdated(mbtiMessage)
+                        }
+                        else -> {
+                            // 일반 채팅 메시지
+                            val message = gson.fromJson(payload, WebSocketMessageResponse::class.java)
+                            Log.d(TAG, "✅ Received chat message: ${message.id}")
+                            listener?.onMessageReceived(message)
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Failed to parse message", e)
                 }

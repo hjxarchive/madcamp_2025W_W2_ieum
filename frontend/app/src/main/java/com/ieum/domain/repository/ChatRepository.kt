@@ -2,12 +2,25 @@ package com.ieum.domain.repository
 
 import com.ieum.domain.model.ChatMessage
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+
+/**
+ * MBTI 업데이트 이벤트 데이터
+ */
+data class MbtiUpdateEvent(
+    val userId: String,
+    val userName: String?,
+    val mbtiType: String
+)
 
 interface ChatRepository {
     val messages: StateFlow<List<ChatMessage>>
     val connectionState: StateFlow<ChatConnectionState>
     val isPartnerTyping: StateFlow<Boolean>
+
+    /** 파트너 MBTI 업데이트 이벤트 (WebSocket으로 수신) */
+    val mbtiUpdateEvent: SharedFlow<MbtiUpdateEvent>
 
     fun getMessages(): Flow<List<ChatMessage>>
     suspend fun connectWebSocket()

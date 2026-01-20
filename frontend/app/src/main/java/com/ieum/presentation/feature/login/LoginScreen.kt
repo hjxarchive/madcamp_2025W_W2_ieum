@@ -26,17 +26,42 @@ import com.ieum.R
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
-    onAlreadyLoggedIn: () -> Unit = onLoginSuccess,
+    onNavigateToMain: () -> Unit = onLoginSuccess,
+    onNavigateToMbti: () -> Unit = onLoginSuccess,
+    onNavigateToOnboarding: () -> Unit = onLoginSuccess,
+    onNavigateToCodeConnection: () -> Unit = onLoginSuccess,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val webClientId = stringResource(R.string.default_web_client_id)
 
-    // 이미 로그인된 상태면 자동 이동
-    LaunchedEffect(uiState.isLoggedIn) {
+    // 이미 로그인된 상태면 적절한 화면으로 이동
+    LaunchedEffect(uiState.isLoggedIn, uiState.isLoading) {
         if (uiState.isLoggedIn && !uiState.isLoading) {
-            onAlreadyLoggedIn()
+            android.util.Log.d("LoginScreen", "자동 로그인 - 화면 전환 결정")
+            android.util.Log.d("LoginScreen", "  - hasCoupleId: ${uiState.hasCoupleId}")
+            android.util.Log.d("LoginScreen", "  - hasMbti: ${uiState.hasMbti}")
+            android.util.Log.d("LoginScreen", "  - hasNickname: ${uiState.hasNickname}")
+
+            when {
+                uiState.hasCoupleId -> {
+                    android.util.Log.d("LoginScreen", "→ 메인 화면으로 이동")
+                    onNavigateToMain()
+                }
+                !uiState.hasMbti -> {
+                    android.util.Log.d("LoginScreen", "→ MBTI 테스트로 이동")
+                    onNavigateToMbti()
+                }
+                !uiState.hasNickname -> {
+                    android.util.Log.d("LoginScreen", "→ 온보딩(닉네임)으로 이동")
+                    onNavigateToOnboarding()
+                }
+                else -> {
+                    android.util.Log.d("LoginScreen", "→ 코드 연결 화면으로 이동")
+                    onNavigateToCodeConnection()
+                }
+            }
         }
     }
 

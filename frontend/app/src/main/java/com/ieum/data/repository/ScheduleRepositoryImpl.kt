@@ -127,7 +127,25 @@ class ScheduleRepositoryImpl @Inject constructor(
             list.filter { it.date == date }
         }
 
-    override fun getAnniversaries(): Flow<List<Anniversary>> = anniversaries
+    override fun getAnniversaries(): Flow<List<Anniversary>> {
+        // schedules에서 Anniversary로 변환하여 반환 (실시간 동기화)
+        return schedules.map { scheduleList ->
+            val today = LocalDate.now()
+            scheduleList
+                .filter { !it.date.isBefore(today) } // 미래 일정만
+                .sortedBy { it.date }
+                .map { schedule ->
+                    val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, schedule.date).toInt()
+                    Anniversary(
+                        id = schedule.id.toLong(),
+                        title = schedule.title,
+                        emoji = "📅",
+                        dDay = if (daysUntil == 0) "D-Day" else "D-$daysUntil",
+                        date = schedule.date
+                    )
+                }
+        }
+    }
 
     override suspend fun addSchedule(schedule: Schedule) {
         // 낙관적 업데이트: 즉시 UI에 표시

@@ -9,6 +9,7 @@ import com.ieum.data.api.UserService
 import com.ieum.domain.model.CoupleInfo
 import com.ieum.domain.model.User
 import com.ieum.domain.repository.AuthRepository
+import com.ieum.domain.repository.ChatRepository
 import com.ieum.domain.repository.TestRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,8 @@ class ProfileViewModel @Inject constructor(
     private val userService: UserService,
     private val mbtiService: MbtiService,
     private val testRepository: TestRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val chatRepository: ChatRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -38,6 +40,28 @@ class ProfileViewModel @Inject constructor(
     init {
         loadProfile()
         loadMbtiData()
+        observeMbtiUpdateEvent()
+    }
+
+    /**
+     * 파트너 MBTI 업데이트 이벤트 관찰
+     * WebSocket으로 파트너가 MBTI 테스트를 완료하면 알림 수신
+     */
+    private fun observeMbtiUpdateEvent() {
+        viewModelScope.launch {
+            chatRepository.mbtiUpdateEvent.collect { event ->
+                Log.d("ProfileViewModel", "🎉 파트너 MBTI 업데이트 수신: ${event.userName} - ${event.mbtiType}")
+
+                // 파트너 MBTI 즉시 업데이트
+                _uiState.value = _uiState.value.copy(partnerMbti = event.mbtiType)
+
+                // 로컬 저장소에도 저장
+                testRepository.savePartnerMbtiResult(event.mbtiType)
+
+                // 전체 커플 정보 새로고침 (추가 정보 동기화)
+                loadProfile()
+            }
+        }
     }
 
     private fun loadProfile() {
@@ -84,6 +108,9 @@ class ProfileViewModel @Inject constructor(
                 // Fetch couple info
                 try {
                     val coupleResponse = coupleService.getCoupleInfo()
+                    val partnerMbtiFromApi = coupleResponse.partner?.mbtiType
+                    Log.d("ProfileViewModel", "커플 API 파트너 MBTI: $partnerMbtiFromApi")
+
                     val partner = coupleResponse.partner?.let { partnerDto ->
                         User(
                             id = partnerDto.id.hashCode().toLong(),
@@ -105,9 +132,13 @@ class ProfileViewModel @Inject constructor(
                         startDate = coupleResponse.anniversary ?: LocalDate.now().toString()
                     )
 
+                    // partnerMbti가 null이거나 빈 값이면 기존 값 유지 (덮어쓰기 방지)
+                    val newPartnerMbti = coupleResponse.partner?.mbtiType?.takeIf { it.isNotEmpty() }
+                        ?: _uiState.value.partnerMbti
+
                     _uiState.value = _uiState.value.copy(
                         coupleInfo = coupleInfo,
-                        partnerMbti = coupleResponse.partner?.mbtiType,
+                        partnerMbti = newPartnerMbti,
                         isLoading = false,
                         error = null
                     )
