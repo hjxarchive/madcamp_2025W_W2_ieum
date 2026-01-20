@@ -115,4 +115,14 @@ dependencies {
 
     // Accompanist Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+
+    // WebSocket - STOMP Protocol
+    implementation("com.github.NaikSoftware:StompProtocolAndroid:1.6.6")
+
+    // RxJava (required by StompProtocolAndroid)
+    implementation("io.reactivex.rxjava2:rxjava:2.2.21")
+    implementation("io.reactivex.rxjava2:rxandroid:2.1.1")
+
+    // Security - EncryptedSharedPreferences for E2EE key storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }

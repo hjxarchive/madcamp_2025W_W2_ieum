@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ieum.domain.model.ChatMessage
 import com.ieum.domain.model.MessageType
+import com.ieum.domain.repository.ChatConnectionState
 import com.ieum.presentation.theme.IeumColors
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -44,8 +45,17 @@ fun ChatScreen(
     val messages = uiState.messages
     val messageText = uiState.inputText
     val partnerName = uiState.partnerName
+    val connectionState = uiState.connectionState
+    val isPartnerTyping = uiState.isPartnerTyping
     val context = androidx.compose.ui.platform.LocalContext.current
-    
+
+    // 새 메시지가 오면 자동 스크롤
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
     // 네이버 지도 실행 Intent
     fun shareLocation() {
         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("nmap://map"))
@@ -86,7 +96,13 @@ fun ChatScreen(
             .background(Color(0xFFF8F4F0)) // 따뜻한 베이지 톤 배경
     ) {
         // 상단 헤더
-        ChatHeader(partnerName = partnerName, onBackClick = onBackClick)
+        ChatHeader(
+            partnerName = partnerName,
+            connectionState = connectionState,
+            isPartnerTyping = isPartnerTyping,
+            onBackClick = onBackClick,
+            onReconnect = { viewModel.reconnect() }
+        )
         
         // 메시지 목록
         LazyColumn(
@@ -235,7 +251,13 @@ fun ScheduleSelectionDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ChatHeader(partnerName: String, onBackClick: () -> Unit) {
+private fun ChatHeader(
+    partnerName: String,
+    connectionState: ChatConnectionState,
+    isPartnerTyping: Boolean,
+    onBackClick: () -> Unit,
+    onReconnect: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = IeumColors.Background,
@@ -255,7 +277,7 @@ private fun ChatHeader(partnerName: String, onBackClick: () -> Unit) {
                     tint = IeumColors.TextPrimary
                 )
             }
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -266,8 +288,52 @@ private fun ChatHeader(partnerName: String, onBackClick: () -> Unit) {
                     ),
                     color = IeumColors.TextPrimary
                 )
+
+                // 연결 상태 또는 타이핑 인디케이터 표시
+                when {
+                    isPartnerTyping -> {
+                        Text(
+                            text = "입력 중...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = IeumColors.Primary
+                        )
+                    }
+                    connectionState == ChatConnectionState.CONNECTED -> {
+                        Text(
+                            text = "온라인",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF4CAF50)
+                        )
+                    }
+                    connectionState == ChatConnectionState.CONNECTING -> {
+                        Text(
+                            text = "연결 중...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFFFA726)
+                        )
+                    }
+                    connectionState == ChatConnectionState.ERROR -> {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { onReconnect() }
+                        ) {
+                            Text(
+                                text = "연결 실패 - 탭하여 재연결",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFE53935)
+                            )
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = "오프라인",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = IeumColors.TextSecondary
+                        )
+                    }
+                }
             }
-            
+
             // 돋보기 (검색) 아이콘
             IconButton(onClick = { }) {
                 Icon(
@@ -283,7 +349,7 @@ private fun ChatHeader(partnerName: String, onBackClick: () -> Unit) {
 @Composable
 private fun MessageItem(message: ChatMessage) {
     val alignment = if (message.isMe) Alignment.End else Alignment.Start
-    
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = alignment
@@ -295,15 +361,29 @@ private fun MessageItem(message: ChatMessage) {
             MessageType.SHARED_BUCKET -> SharedBucketBubble(message)
             MessageType.IMAGE -> ImageMessageBubble(message)
         }
-        
+
         Spacer(modifier = Modifier.height(2.dp))
-        
-        // 시간
-        Text(
-            text = message.timestamp.format(DateTimeFormatter.ofPattern("HH:mm")),
-            style = MaterialTheme.typography.labelSmall,
-            color = IeumColors.TextSecondary.copy(alpha = 0.7f)
-        )
+
+        // 시간 및 읽음 상태
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (message.isMe) Arrangement.End else Arrangement.Start
+        ) {
+            // 내가 보낸 메시지의 경우 읽음 상태 표시
+            if (message.isMe && message.isRead) {
+                Text(
+                    text = "읽음",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = IeumColors.Primary.copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            Text(
+                text = message.timestamp.format(DateTimeFormatter.ofPattern("HH:mm")),
+                style = MaterialTheme.typography.labelSmall,
+                color = IeumColors.TextSecondary.copy(alpha = 0.7f)
+            )
+        }
     }
 }
 

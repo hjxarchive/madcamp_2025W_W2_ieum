@@ -8,7 +8,8 @@ data class ChatMessage(
     val isMe: Boolean,
     val timestamp: LocalDateTime,
     val type: MessageType = MessageType.TEXT,
-    val sharedData: Map<String, String>? = null
+    val sharedData: Map<String, String>? = null,
+    val isRead: Boolean = false
 )
 
 enum class MessageType {

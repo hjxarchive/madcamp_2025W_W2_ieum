@@ -381,3 +381,23 @@ data class ErrorResponse(
     val status: Int,
     val message: String
 )
+
+// ==================== E2EE (End-to-End Encryption) ====================
+
+data class PublicKeyRequest(
+    val publicKey: String
+)
+
+data class PublicKeyResponse(
+    val hasKey: Boolean,
+    val publicKey: String?
+)
+
+data class SharedKeyRequest(
+    val encryptedSharedKey: String
+)
+
+data class SharedKeyResponse(
+    val hasSharedKey: Boolean,
+    val encryptedSharedKey: String?
+)
