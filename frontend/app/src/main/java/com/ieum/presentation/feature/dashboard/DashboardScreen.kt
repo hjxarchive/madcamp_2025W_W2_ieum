@@ -36,7 +36,8 @@ fun DashboardScreen(
     onNavigateToCalendar: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
     onNavigateToBudgetPlanning: () -> Unit = {},
-    onNavigateToClicker: () -> Unit = {}
+    onNavigateToClicker: () -> Unit = {},
+    onNavigateToCompatibility: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -45,7 +46,8 @@ fun DashboardScreen(
         onNavigateToCalendar = onNavigateToCalendar,
         onNavigateToProfile = onNavigateToProfile,
         onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
-        onNavigateToClicker = onNavigateToClicker
+        onNavigateToClicker = onNavigateToClicker,
+        onNavigateToCompatibility = onNavigateToCompatibility
     )
 }
 
@@ -55,7 +57,8 @@ fun DashboardContent(
     onNavigateToCalendar: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
     onNavigateToBudgetPlanning: () -> Unit = {},
-    onNavigateToClicker: () -> Unit = {}
+    onNavigateToClicker: () -> Unit = {},
+    onNavigateToCompatibility: () -> Unit = {}
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // 배경 이미지 설정
@@ -156,7 +159,7 @@ fun DashboardContent(
                         horizontalArrangement = Arrangement.SpaceAround
                     ) {
                         MenuButton("궁합", Icons.Default.Favorite, uiState, onClick = {
-                            /* 클릭 시 동작: 예) println("궁합 클릭") */
+                            onNavigateToCompatibility()
                         })
                         MenuButton("클리커", Icons.Default.SportsEsports, uiState, onClick = {
                             onNavigateToClicker()
