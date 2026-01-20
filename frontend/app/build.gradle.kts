@@ -114,9 +114,6 @@ dependencies {
 
     // DataStore (토큰 저장용 - SharedPreferences 대신 권장)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
-<<<<<<< Updated upstream
-=======
-
     // Google Maps
     implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.google.maps.android:maps-compose:4.3.3")
@@ -143,5 +140,4 @@ dependencies {
 
     // Google Generative AI (Gemini)
     implementation("com.google.ai.client.generativeai:generativeai:0.7.0")
->>>>>>> Stashed changes
 }

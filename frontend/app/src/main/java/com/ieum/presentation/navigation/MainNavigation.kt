@@ -86,12 +86,7 @@ fun MainNavigation() {
                     }
                 )
             }
-<<<<<<< Updated upstream
-            
-            // 온보딩 2단계: 생일 입력
-=======
 
->>>>>>> Stashed changes
             composable(Routes.ONBOARDING_BIRTHDAY) { backStackEntry ->
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)
@@ -106,12 +101,7 @@ fun MainNavigation() {
                     }
                 )
             }
-<<<<<<< Updated upstream
-            
-            // 온보딩 3단계: 기념일 입력
-=======
 
->>>>>>> Stashed changes
             composable(Routes.ONBOARDING_ANNIVERSARY) { backStackEntry ->
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)

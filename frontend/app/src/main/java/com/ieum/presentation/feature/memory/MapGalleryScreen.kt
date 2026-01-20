@@ -320,7 +320,6 @@ private fun MemoryPreviewCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(memory.color.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
-                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Image,
