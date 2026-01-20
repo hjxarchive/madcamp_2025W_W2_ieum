@@ -19,7 +19,8 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: com.ieum.domain.repository.ChatRepository,
     private val getSchedulesForMonthUseCase: com.ieum.domain.usecase.schedule.GetSchedulesForMonthUseCase,
     private val bucketRepository: com.ieum.domain.repository.BucketRepository,
-    private val financeRepository: com.ieum.domain.repository.FinanceRepository
+    private val financeRepository: com.ieum.domain.repository.FinanceRepository,
+    private val userRepository: com.ieum.domain.repository.UserRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChatUiState())
@@ -28,6 +29,7 @@ class ChatViewModel @Inject constructor(
     init {
         loadMessages()
         loadSharingSchedules() // 초기 로딩
+        loadPartnerName()
     }
 
     private fun loadMessages() {
@@ -47,6 +49,16 @@ class ChatViewModel @Inject constructor(
                         error = null
                     )
                 }
+        }
+    }
+    
+    private fun loadPartnerName() {
+        viewModelScope.launch {
+            userRepository.getCoupleInfo().collect { coupleInfo ->
+                _uiState.value = _uiState.value.copy(
+                    partnerName = coupleInfo.partner.nickname
+                )
+            }
         }
     }
 

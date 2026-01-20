@@ -256,25 +256,6 @@ private fun ChatHeader(partnerName: String, onBackClick: () -> Unit) {
                 )
             }
             
-            // 프로필
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(IeumColors.Primary.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = partnerName.first().toString(),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold
-                    ),
-                    color = IeumColors.Primary
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -328,12 +309,12 @@ private fun MessageItem(message: ChatMessage) {
 
 @Composable
 private fun TextMessageBubble(message: ChatMessage) {
-    val backgroundColor = if (message.isMe) Color(0xFFE0C4BB) else Color.White
-    val textColor = if (message.isMe) Color.White else IeumColors.TextPrimary
+    val backgroundColor = if (message.isMe) Color(0xFFEBC1B3) else Color.White
+    val textColor = IeumColors.TextPrimary
     val shape = if (message.isMe) {
-        RoundedCornerShape(20.dp, 20.dp, 4.dp, 20.dp)
+        RoundedCornerShape(16.dp, 16.dp, 6.dp, 16.dp)
     } else {
-        RoundedCornerShape(20.dp, 20.dp, 20.dp, 4.dp)
+        RoundedCornerShape(16.dp, 16.dp, 16.dp, 6.dp)
     }
     
     Surface(
@@ -345,7 +326,7 @@ private fun TextMessageBubble(message: ChatMessage) {
             text = message.content,
             style = MaterialTheme.typography.bodyMedium,
             color = textColor,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
         )
     }
 }

@@ -103,8 +103,8 @@ fun BudgetPlanningScreen(
             Slider(
                 value = budget.toFloat(),
                 onValueChange = { viewModel.setBudget(it.toInt()) },
-                valueRange = 100000f..3000000f,
-                steps = 28, // (300-10)/10 = 29 steps roughly
+                valueRange = 300000f..1000000f,
+                steps = 6, // 300k to 1M in 100k increments
                 colors = SliderDefaults.colors(
                     thumbColor = Color(0xFF5A3E2B), // Changed to brown
                     activeTrackColor = Color(0xFF5A3E2B).copy(alpha = 0.6f), // Changed to brown

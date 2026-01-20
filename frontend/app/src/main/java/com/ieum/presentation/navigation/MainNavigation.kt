@@ -265,7 +265,7 @@ fun IeumBottomNavigation(
 ) {
     NavigationBar(
         modifier = modifier,
-        containerColor = Color.Transparent,
+        //containerColor = Color.Transparent,
         tonalElevation = 0.dp
     ) {
         bottomNavItems.forEachIndexed { index, item ->
