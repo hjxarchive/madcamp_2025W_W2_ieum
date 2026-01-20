@@ -97,7 +97,7 @@ fun DashboardContent(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(24.dp),
+                contentPadding = PaddingValues(start = 24.dp, top = 24.dp, end = 24.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // 1. 함께한 시간 컨테이너
