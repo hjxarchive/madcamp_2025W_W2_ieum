@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,11 +73,10 @@ fun MainNavigation() {
             )
         }
 
-        // MBTI 테스트 화면
+        // MBTI 테스트 화면 (필요 시 직접 호출하거나 나중에 복구 가능)
         composable(Routes.MBTI_TEST) {
             com.ieum.presentation.feature.test.TestMainScreen(
                 onTestFinished = {
-                    // 테스트 종료 시 온보딩 화면으로 이동
                     navController.navigate(Routes.ONBOARDING_NICKNAME) {
                         popUpTo(Routes.MBTI_TEST) { inclusive = true }
                     }
@@ -91,9 +89,7 @@ fun MainNavigation() {
             startDestination = Routes.ONBOARDING_NICKNAME,
             route = Routes.ONBOARDING
         ) {
-            // 온보딩 1단계: 닉네임 입력
             composable(Routes.ONBOARDING_NICKNAME) { backStackEntry ->
-                // 온보딩 플로우 전체에서 공유할 ViewModel
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)
                 }
@@ -110,7 +106,6 @@ fun MainNavigation() {
 
             // 온보딩 2단계: 생일 입력
             composable(Routes.ONBOARDING_BIRTHDAY) { backStackEntry ->
-                // 온보딩 플로우 전체에서 공유할 ViewModel
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)
                 }
@@ -127,7 +122,6 @@ fun MainNavigation() {
 
             // 온보딩 3단계: 기념일 입력
             composable(Routes.ONBOARDING_ANNIVERSARY) { backStackEntry ->
-                // 온보딩 플로우 전체에서 공유할 ViewModel
                 val onboardingBackStackEntry = remember(backStackEntry) {
                     navController.getBackStackEntry(Routes.ONBOARDING)
                 }
@@ -159,7 +153,14 @@ fun MainNavigation() {
             MainScreen(
                 onNavigateToMyPage = { navController.navigate(Routes.MY_PAGE) },
                 onNavigateToBudgetPlanning = { navController.navigate(Routes.BUDGET_PLANNING) },
-                onNavigateToClicker = { navController.navigate(Routes.CLICKER_GAME) }
+                onNavigateToClicker = { navController.navigate(Routes.CLICKER_GAME) },
+                onNavigateToCompatibility = { navController.navigate(Routes.COMPATIBILITY) }
+            )
+        }
+
+        composable(Routes.COMPATIBILITY) {
+            com.ieum.presentation.feature.compatibility.CompatibilityScreen(
+                onBackClick = { navController.popBackStack() }
             )
         }
 
@@ -222,16 +223,16 @@ fun MainScreen(
     modifier: Modifier = Modifier,
     onNavigateToMyPage: () -> Unit,
     onNavigateToBudgetPlanning: () -> Unit,
-    onNavigateToClicker: () -> Unit
+    onNavigateToClicker: () -> Unit,
+    onNavigateToCompatibility: () -> Unit = {}
 ) {
-    // 대시보드가 기본 (index 3 - Calendar=0, Map=1, Chat=2, Dashboard=3)
+    // 대시보드가 기본 (index 3)
     var selectedItem by remember { mutableIntStateOf(3) }
 
     Scaffold(
         modifier = modifier,
         containerColor = Color.Transparent,
         bottomBar = {
-            // ✅ 캘린더 화면(index 0)과 채팅 화면(index 2)이 아닐 때만 바텀 바를 표시합니다.
             if (selectedItem != 0 && selectedItem != 2) {
                 IeumBottomNavigation(
                     selectedIndex = selectedItem,
@@ -257,7 +258,6 @@ fun MainScreen(
                 label = "screen_transition"
             ) { index ->
                 when (bottomNavItems[index]) {
-                    // ✅ 뒤로 가기 시 다시 대시보드(index 3)로 돌아오도록 설정
                     BottomNavItem.Calendar -> CalendarContent(onBack = { selectedItem = 3 })
                     BottomNavItem.MapGallery -> MapGalleryContent()
                     BottomNavItem.Chat -> ChatContent(onBack = { selectedItem = 3 }, onNavigateToBudgetPlanning = onNavigateToBudgetPlanning)
@@ -265,7 +265,8 @@ fun MainScreen(
                         onNavigateToCalendar = { selectedItem = 0 },
                         onNavigateToMyPage = onNavigateToMyPage,
                         onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
-                        onNavigateToClicker = onNavigateToClicker
+                        onNavigateToClicker = onNavigateToClicker,
+                        onNavigateToCompatibility = onNavigateToCompatibility
                     )
                 }
             }
@@ -307,7 +308,7 @@ fun IeumBottomNavigation(
     }
 }
 
-// --- 각 화면 연결 함수 (패키지 경로에 주의하세요) ---
+// --- 각 화면 연결 함수 ---
 
 @Composable
 private fun CalendarContent(onBack: () -> Unit) {
@@ -334,12 +335,14 @@ private fun DashboardContent(
     onNavigateToCalendar: () -> Unit,
     onNavigateToMyPage: () -> Unit,
     onNavigateToBudgetPlanning: () -> Unit,
-    onNavigateToClicker: () -> Unit
+    onNavigateToClicker: () -> Unit,
+    onNavigateToCompatibility: () -> Unit = {}
 ) {
     com.ieum.presentation.feature.dashboard.DashboardScreen(
         onNavigateToCalendar = onNavigateToCalendar,
         onNavigateToProfile = onNavigateToMyPage,
         onNavigateToBudgetPlanning = onNavigateToBudgetPlanning,
-        onNavigateToClicker = onNavigateToClicker
+        onNavigateToClicker = onNavigateToClicker,
+        onNavigateToCompatibility = onNavigateToCompatibility
     )
 }
