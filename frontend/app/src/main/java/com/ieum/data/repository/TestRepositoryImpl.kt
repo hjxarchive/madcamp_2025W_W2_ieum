@@ -108,7 +108,7 @@ class TestRepositoryImpl @Inject constructor(
     /**
      * Submit MBTI answers to server and get result
      */
-    suspend fun submitMbtiAnswers(answers: Map<String, String>): Result<String> {
+    override suspend fun submitMbtiAnswers(answers: Map<String, String>): Result<String> {
         return try {
             val request = MbtiSubmitRequest(answers = answers)
             val response = mbtiService.submitAnswers(request)
