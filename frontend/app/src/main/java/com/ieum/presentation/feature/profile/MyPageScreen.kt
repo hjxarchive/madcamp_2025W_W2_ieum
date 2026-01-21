@@ -3,6 +3,8 @@ package com.ieum.presentation.feature.profile
 import androidx.compose.foundation.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,6 +55,17 @@ fun MyPageScreen(
         }
     }
 
+    // MBTI 기반 케미 추천 로드
+    LaunchedEffect(uiState.myMbti, uiState.partnerMbti) {
+        android.util.Log.d("MyPageScreen", "케미 추천 체크: myMbti=${uiState.myMbti}, partnerMbti=${uiState.partnerMbti}")
+        if (!uiState.myMbti.isNullOrEmpty() && !uiState.partnerMbti.isNullOrEmpty()) {
+            android.util.Log.d("MyPageScreen", "케미 추천 로드 시작!")
+            viewModel.loadChemistryRecommendations()
+        } else {
+            android.util.Log.d("MyPageScreen", "MBTI 정보 부족으로 케미 추천 로드 스킵")
+        }
+    }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -95,9 +108,29 @@ fun MyPageScreen(
             // 2. MBTI Chemistry Section
             MBTIChemistrySection(uiState)
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 3. 추천해요 섹션
+            ChemistryRecommendationSection(
+                title = "추천해요",
+                titleColor = Color(0xFF5A3E2B),
+                cards = uiState.recommendations,
+                isLoading = uiState.isLoadingChemistry
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 4. 주의해요 섹션
+            ChemistryRecommendationSection(
+                title = "주의해요",
+                titleColor = Color(0xFF5A3E2B),
+                cards = uiState.cautions,
+                isLoading = uiState.isLoadingChemistry
+            )
+
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 3. Finance Section (Redesigned)
+            // 5. Finance Section (Redesigned)
             FinanceSectionList(
                 onNavigateToConsumption = onNavigateToConsumption,
                 onNavigateToBudgetPlanning = onNavigateToBudgetPlanning
@@ -105,7 +138,7 @@ fun MyPageScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // 4. Settings Section (New)
+            // 6. Settings Section
             SettingsSection(onLogoutClick = { viewModel.logout() })
 
             Spacer(modifier = Modifier.height(50.dp))
@@ -419,6 +452,170 @@ private fun SettingsItem(
                 color = Color.LightGray.copy(alpha = 0.3f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 20.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ChemistryRecommendationSection(
+    title: String,
+    titleColor: Color,
+    cards: List<ChemistryCard>,
+    isLoading: Boolean
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = titleColor,
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    Spacer(modifier = Modifier.height(12.dp))
+
+    if (isLoading) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = MainBrown,
+                        strokeWidth = 3.dp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "AI가 분석 중이에요...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+    } else if (cards.isEmpty()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "MBTI 테스트를 완료하면 분석해드려요!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+        }
+    } else {
+        val pagerState = rememberPagerState(pageCount = { cards.size })
+
+        Column {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp),
+                contentPadding = PaddingValues(end = 32.dp),
+                pageSpacing = 12.dp
+            ) { page ->
+                ChemistryCardItem(card = cards[page], accentColor = titleColor)
+            }
+
+            // 페이지 인디케이터
+            if (cards.size > 1) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    repeat(cards.size) { index ->
+                        val isSelected = pagerState.currentPage == index
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 4.dp)
+                                .size(if (isSelected) 8.dp else 6.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) titleColor else Color.LightGray
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChemistryCardItem(
+    card: ChemistryCard,
+    accentColor: Color
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(140.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            // 카테고리 + 이모지
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = card.emoji,
+                    fontSize = 24.sp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = card.category,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = accentColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 제목
+            Text(
+                text = card.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MainBrown
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 설명
+            Text(
+                text = card.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray,
+                maxLines = 2
             )
         }
     }

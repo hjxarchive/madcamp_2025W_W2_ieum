@@ -3,6 +3,8 @@ package com.ieum.presentation.feature.profile
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.ai.client.generativeai.GenerativeModel
+import com.ieum.BuildConfig
 import com.ieum.data.api.CoupleService
 import com.ieum.data.api.MbtiService
 import com.ieum.data.api.UserService
@@ -30,6 +32,11 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val chatRepository: ChatRepository
 ) : ViewModel() {
+
+    private val generativeModel = GenerativeModel(
+        modelName = "gemini-2.0-flash",
+        apiKey = BuildConfig.GEMINI_API_KEY
+    )
 
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -239,5 +246,163 @@ class ProfileViewModel @Inject constructor(
 
     fun resetLogoutEvent() {
         _logoutEvent.value = false
+    }
+
+    /**
+     * MBTI 기반 케미 추천/주의 사항 로드 (Gemini API)
+     */
+    fun loadChemistryRecommendations() {
+        val myMbti = _uiState.value.myMbti?.uppercase()
+        val partnerMbti = _uiState.value.partnerMbti?.uppercase()
+
+        if (myMbti.isNullOrEmpty() || partnerMbti.isNullOrEmpty()) {
+            Log.d("ProfileViewModel", "MBTI 정보 부족: myMbti=$myMbti, partnerMbti=$partnerMbti")
+            return
+        }
+
+        // 이미 로딩 중이거나 데이터가 있으면 스킵
+        if (_uiState.value.isLoadingChemistry || _uiState.value.recommendations.isNotEmpty()) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingChemistry = true, chemistryError = null)
+
+            try {
+                val prompt = buildChemistryPrompt(myMbti, partnerMbti)
+                Log.d("ProfileViewModel", "Gemini 프롬프트: $prompt")
+
+                val response = generativeModel.generateContent(prompt)
+                val responseText = response.text ?: throw Exception("응답을 받지 못했습니다.")
+
+                Log.d("ProfileViewModel", "Gemini 응답: $responseText")
+
+                val (recommendations, cautions) = parseChemistryResponse(responseText)
+
+                _uiState.value = _uiState.value.copy(
+                    recommendations = recommendations,
+                    cautions = cautions,
+                    isLoadingChemistry = false
+                )
+            } catch (e: Exception) {
+                Log.e("ProfileViewModel", "케미 추천 로드 실패", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoadingChemistry = false,
+                    chemistryError = e.message
+                )
+            }
+        }
+    }
+
+    private fun buildChemistryPrompt(myMbti: String, partnerMbti: String): String {
+        // MBTI 차원 해석
+        // M/I: 소비 성향 (Measured 절제형 / Indulgent 향유형)
+        // D/T: 갈등 성향 (Direct 직접형 / Thoughtful 숙고형)
+        // E/C: 도전 성향 (Explorer 탐험형 / Comfort 안정형)
+        // P/F: 데이트 성향 (Planner 계획형 / Flow 즉흥형)
+
+        val myTraits = parseMbtiTraits(myMbti)
+        val partnerTraits = parseMbtiTraits(partnerMbti)
+
+        return """
+            당신은 커플 관계 전문가입니다. 두 사람의 연애 MBTI를 분석하여 추천과 주의사항을 알려주세요.
+
+            나의 MBTI: $myMbti
+            - 소비 성향: ${myTraits.spending}
+            - 갈등 성향: ${myTraits.conflict}
+            - 도전 성향: ${myTraits.adventure}
+            - 데이트 성향: ${myTraits.dating}
+
+            상대방 MBTI: $partnerMbti
+            - 소비 성향: ${partnerTraits.spending}
+            - 갈등 성향: ${partnerTraits.conflict}
+            - 도전 성향: ${partnerTraits.adventure}
+            - 데이트 성향: ${partnerTraits.dating}
+
+            다음 형식으로 정확히 응답해주세요:
+
+            [추천]
+            데이트: (제목) | (설명 한 문장)
+            소비: (제목) | (설명 한 문장)
+            갈등: (제목) | (설명 한 문장)
+            도전: (제목) | (설명 한 문장)
+
+            [주의]
+            데이트: (제목) | (설명 한 문장)
+            소비: (제목) | (설명 한 문장)
+            갈등: (제목) | (설명 한 문장)
+            도전: (제목) | (설명 한 문장)
+
+            각 항목은 두 사람의 성향 조합을 고려하여 구체적이고 실용적인 조언을 해주세요.
+            제목은 10자 이내, 설명은 30자 이내로 간결하게 작성해주세요.
+        """.trimIndent()
+    }
+
+    private data class MbtiTraits(
+        val spending: String,
+        val conflict: String,
+        val adventure: String,
+        val dating: String
+    )
+
+    private fun parseMbtiTraits(mbti: String): MbtiTraits {
+        val upper = mbti.uppercase()
+        return MbtiTraits(
+            spending = if (upper.contains("M")) "절제형 (Measured)" else "향유형 (Indulgent)",
+            conflict = if (upper.contains("D")) "직접형 (Direct)" else "숙고형 (Thoughtful)",
+            adventure = if (upper.contains("E")) "탐험형 (Explorer)" else "안정형 (Comfort)",
+            dating = if (upper.contains("P")) "계획형 (Planner)" else "즉흥형 (Flow)"
+        )
+    }
+
+    private fun parseChemistryResponse(response: String): Pair<List<ChemistryCard>, List<ChemistryCard>> {
+        val recommendations = mutableListOf<ChemistryCard>()
+        val cautions = mutableListOf<ChemistryCard>()
+
+        val emojiMap = mapOf(
+            "데이트" to "💕",
+            "소비" to "💰",
+            "갈등" to "💬",
+            "도전" to "🚀"
+        )
+
+        var isRecommendation = true
+
+        for (line in response.lines()) {
+            val trimmed = line.trim()
+
+            if (trimmed.contains("[추천]")) {
+                isRecommendation = true
+                continue
+            }
+            if (trimmed.contains("[주의]")) {
+                isRecommendation = false
+                continue
+            }
+
+            for (category in listOf("데이트", "소비", "갈등", "도전")) {
+                if (trimmed.startsWith("$category:")) {
+                    val content = trimmed.removePrefix("$category:").trim()
+                    val parts = content.split("|").map { it.trim() }
+                    val title = parts.getOrNull(0) ?: continue
+                    val description = parts.getOrNull(1) ?: ""
+
+                    val card = ChemistryCard(
+                        category = category,
+                        title = title,
+                        description = description,
+                        emoji = emojiMap[category] ?: "✨"
+                    )
+
+                    if (isRecommendation) {
+                        recommendations.add(card)
+                    } else {
+                        cautions.add(card)
+                    }
+                }
+            }
+        }
+
+        return Pair(recommendations, cautions)
     }
 }
