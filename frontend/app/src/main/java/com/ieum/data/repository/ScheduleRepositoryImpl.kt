@@ -1,6 +1,12 @@
 package com.ieum.data.repository
 
+import android.content.Context
 import android.util.Log
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.ieum.data.api.EventService
 import com.ieum.data.dto.EventRequest
 import com.ieum.data.websocket.ChatWebSocketClient
@@ -9,10 +15,12 @@ import com.ieum.data.websocket.ScheduleSyncMessage
 import com.ieum.domain.model.Anniversary
 import com.ieum.domain.model.Schedule
 import com.ieum.domain.repository.ScheduleRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -22,15 +30,82 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private val Context.scheduleDataStore by preferencesDataStore(name = "schedule_prefs")
+
 @Singleton
 class ScheduleRepositoryImpl @Inject constructor(
     private val eventService: EventService,
-    private val chatWebSocketClient: ChatWebSocketClient
+    private val chatWebSocketClient: ChatWebSocketClient,
+    @ApplicationContext private val context: Context
 ) : ScheduleRepository {
 
     private val schedules = MutableStateFlow<List<Schedule>>(emptyList())
     private val anniversaries = MutableStateFlow<List<Anniversary>>(emptyList())
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    private val gson = Gson()
+
+    private val ANNIVERSARIES_KEY = stringPreferencesKey("anniversaries_json")
+
+    init {
+        // 앱 시작 시 저장된 기념일 불러오기
+        coroutineScope.launch {
+            loadAnniversariesFromDataStore()
+        }
+    }
+
+    private suspend fun loadAnniversariesFromDataStore() {
+        try {
+            val prefs = context.scheduleDataStore.data.first()
+            val json = prefs[ANNIVERSARIES_KEY]
+            if (!json.isNullOrEmpty()) {
+                val type = object : TypeToken<List<AnniversaryDto>>() {}.type
+                val dtos: List<AnniversaryDto> = gson.fromJson(json, type)
+                val loadedAnniversaries = dtos.map { dto ->
+                    Anniversary(
+                        id = dto.id,
+                        title = dto.title,
+                        emoji = dto.emoji,
+                        dDay = dto.dDay,
+                        date = LocalDate.parse(dto.date)
+                    )
+                }
+                anniversaries.value = loadedAnniversaries
+                Log.d("ScheduleRepository", "Loaded ${loadedAnniversaries.size} anniversaries from DataStore")
+            }
+        } catch (e: Exception) {
+            Log.e("ScheduleRepository", "Failed to load anniversaries from DataStore", e)
+        }
+    }
+
+    private suspend fun saveAnniversariesToDataStore() {
+        try {
+            val dtos = anniversaries.value.map { anniversary ->
+                AnniversaryDto(
+                    id = anniversary.id,
+                    title = anniversary.title,
+                    emoji = anniversary.emoji,
+                    dDay = anniversary.dDay,
+                    date = anniversary.date.toString()
+                )
+            }
+            val json = gson.toJson(dtos)
+            context.scheduleDataStore.edit { prefs ->
+                prefs[ANNIVERSARIES_KEY] = json
+            }
+            Log.d("ScheduleRepository", "Saved ${dtos.size} anniversaries to DataStore")
+        } catch (e: Exception) {
+            Log.e("ScheduleRepository", "Failed to save anniversaries to DataStore", e)
+        }
+    }
+
+    // DataStore 저장용 DTO (LocalDate를 String으로 변환)
+    private data class AnniversaryDto(
+        val id: Long,
+        val title: String,
+        val emoji: String,
+        val dDay: String,
+        val date: String
+    )
 
     // 로컬 ID (hashCode) -> 서버 ID (UUID) 매핑
     private val scheduleIdMap = mutableMapOf<Int, String>()
@@ -128,12 +203,13 @@ class ScheduleRepositoryImpl @Inject constructor(
         }
 
     override fun getAnniversaries(): Flow<List<Anniversary>> {
-        // schedules에서 Anniversary로 변환하여 반환 (실시간 동기화)
-        return schedules.map { scheduleList ->
+        // schedules와 anniversaries를 합쳐서 반환
+        return kotlinx.coroutines.flow.combine(schedules, anniversaries) { scheduleList, anniversaryList ->
             val today = LocalDate.now()
-            scheduleList
-                .filter { !it.date.isBefore(today) } // 미래 일정만
-                .sortedBy { it.date }
+
+            // schedules에서 Anniversary로 변환
+            val fromSchedules = scheduleList
+                .filter { !it.date.isBefore(today) }
                 .map { schedule ->
                     val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, schedule.date).toInt()
                     Anniversary(
@@ -144,6 +220,21 @@ class ScheduleRepositoryImpl @Inject constructor(
                         date = schedule.date
                     )
                 }
+
+            // anniversaries에서 미래 기념일만 필터링
+            val fromAnniversaries = anniversaryList
+                .filter { !it.date.isBefore(today) }
+                .map { anniversary ->
+                    val daysUntil = java.time.temporal.ChronoUnit.DAYS.between(today, anniversary.date).toInt()
+                    anniversary.copy(
+                        dDay = if (daysUntil == 0) "D-Day" else "D-$daysUntil"
+                    )
+                }
+
+            // 합쳐서 날짜순 정렬
+            (fromSchedules + fromAnniversaries)
+                .distinctBy { "${it.title}_${it.date}" } // 중복 제거
+                .sortedBy { it.date }
         }
     }
 
@@ -197,7 +288,17 @@ class ScheduleRepositoryImpl @Inject constructor(
     }
 
     override suspend fun addAnniversary(anniversary: Anniversary) {
-        anniversaries.value = anniversaries.value + anniversary
+        // 중복 체크 (같은 제목과 날짜가 있으면 추가하지 않음)
+        val isDuplicate = anniversaries.value.any {
+            it.title == anniversary.title && it.date == anniversary.date
+        }
+        if (!isDuplicate) {
+            anniversaries.value = anniversaries.value + anniversary
+            saveAnniversariesToDataStore()
+            Log.d("ScheduleRepository", "Added anniversary: ${anniversary.title} on ${anniversary.date}")
+        } else {
+            Log.d("ScheduleRepository", "Anniversary already exists: ${anniversary.title} on ${anniversary.date}")
+        }
     }
 
     override suspend fun updateSchedule(schedule: Schedule) {

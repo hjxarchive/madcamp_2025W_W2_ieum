@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ieum.data.api.CoupleService
 import com.ieum.data.dto.CoupleJoinRequest
+import com.ieum.data.dto.UserDto
+import com.ieum.domain.model.Anniversary
+import com.ieum.domain.model.Schedule
+import com.ieum.domain.repository.ScheduleRepository
 import com.ieum.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -13,12 +17,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 @HiltViewModel
 class ConnectionViewModel @Inject constructor(
     private val coupleService: CoupleService,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val scheduleRepository: ScheduleRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConnectionUiState())
@@ -55,6 +62,8 @@ class ConnectionViewModel @Inject constructor(
                         coupleInfo.partner.nickname?.let { nickname ->
                             userRepository.updatePartnerNickname(nickname)
                         }
+                        // 파트너 생일 기념일 추가
+                        addPartnerBirthdayAnniversary(coupleInfo.partner)
                         _uiState.update {
                             it.copy(
                                 isConnected = true,
@@ -174,6 +183,8 @@ class ConnectionViewModel @Inject constructor(
                 response.partner?.nickname?.let { nickname ->
                     userRepository.updatePartnerNickname(nickname)
                 }
+                // 파트너 생일 기념일 추가
+                response.partner?.let { addPartnerBirthdayAnniversary(it) }
 
                 _uiState.update {
                     it.copy(
@@ -198,6 +209,8 @@ class ConnectionViewModel @Inject constructor(
                         response.partner?.nickname?.let { nickname ->
                             userRepository.updatePartnerNickname(nickname)
                         }
+                        // 파트너 생일 기념일 추가
+                        response.partner?.let { addPartnerBirthdayAnniversary(it) }
                         _uiState.update {
                             it.copy(
                                 isConnecting = false,
@@ -266,5 +279,72 @@ class ConnectionViewModel @Inject constructor(
      */
     fun refreshCode() {
         generateInviteCode()
+    }
+
+    /**
+     * 파트너 생일 기념일 추가
+     */
+    private fun addPartnerBirthdayAnniversary(partner: UserDto) {
+        val partnerBirthday = partner.birthday ?: return
+        val partnerNickname = partner.nickname ?: "연인"
+
+        viewModelScope.launch {
+            try {
+                val birthday = LocalDate.parse(partnerBirthday, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+                val today = LocalDate.now()
+
+                // 올해 생일 계산 (윤년 처리 포함)
+                var birthDateThisYear = try {
+                    birthday.withYear(today.year)
+                } catch (e: Exception) {
+                    if (birthday.monthValue == 2 && birthday.dayOfMonth == 29) {
+                        LocalDate.of(today.year, 2, 28)
+                    } else {
+                        birthday
+                    }
+                }
+
+                // 올해 생일이 지났으면 내년 생일로
+                if (birthDateThisYear.isBefore(today)) {
+                    birthDateThisYear = try {
+                        birthday.withYear(today.year + 1)
+                    } catch (e: Exception) {
+                        if (birthday.monthValue == 2 && birthday.dayOfMonth == 29) {
+                            LocalDate.of(today.year + 1, 2, 28)
+                        } else {
+                            birthday
+                        }
+                    }
+                }
+
+                // 스케줄 추가
+                scheduleRepository.addSchedule(
+                    Schedule(
+                        id = 0,
+                        title = "${partnerNickname}의 생일",
+                        date = birthDateThisYear,
+                        time = "",
+                        colorHex = "#FFB6C1",
+                        isShared = true,
+                        description = "생일을 축하합니다!"
+                    )
+                )
+
+                // 기념일 추가
+                scheduleRepository.addAnniversary(
+                    Anniversary(
+                        id = 0L,
+                        title = "${partnerNickname} 생일",
+                        emoji = "🎂",
+                        dDay = "",
+                        date = birthDateThisYear
+                    )
+                )
+
+                Log.d("CoupleConnection", "파트너 생일 기념일 추가 완료: ${partnerNickname}, ${birthDateThisYear}")
+            } catch (e: Exception) {
+                Log.e("CoupleConnection", "파트너 생일 파싱/추가 실패: ${e.message}", e)
+            }
+        }
     }
 }
