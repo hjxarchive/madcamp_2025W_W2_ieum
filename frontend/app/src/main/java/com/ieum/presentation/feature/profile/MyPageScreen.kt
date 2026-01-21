@@ -288,7 +288,7 @@ private fun MBTIChemistrySection(uiState: ProfileUiState) {
                 Text(
                     text = chemistryTitle,
                     style = MaterialTheme.typography.headlineSmall,
-                    color = IeumColors.Primary,
+                    color = MainBrown,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(12.dp))
